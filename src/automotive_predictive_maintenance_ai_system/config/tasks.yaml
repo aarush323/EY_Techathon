@@ -1,0 +1,124 @@
+---
+monitor_vehicle_fleet_data:
+  description: Continuously monitor real-time vehicle sensor data and telematics for
+    all {oem_name} fleet vehicles (VEH001-VEH010). Analyze engine parameters, brake
+    conditions, battery status, transmission health, tire pressure, diagnostic trouble
+    codes, and usage patterns. Identify vehicles showing anomalous sensor readings
+    or patterns that indicate potential maintenance needs. Create a comprehensive
+    fleet health report with priority ranking based on urgency of maintenance requirements.
+  expected_output: Detailed fleet monitoring report in JSON format containing vehicle-by-vehicle
+    analysis with sensor readings, identified anomalies, maintenance alert flags,
+    priority rankings (Critical/High/Medium/Low), and recommended immediate actions
+    for vehicles requiring attention
+  agent: data_analysis_agent
+predict_component_failures:
+  description: Using the vehicle data analysis and historical maintenance patterns,
+    apply advanced failure prediction models to identify probable component failures
+    for each vehicle. Analyze maintenance history, current sensor readings, usage
+    patterns, and environmental factors to predict when specific components (engine,
+    brakes, transmission, electrical systems) are likely to fail. Assign probability
+    scores, confidence levels, and time-to-failure estimates for each predicted failure.
+    Prioritize predictions based on safety criticality and cost implications.
+  expected_output: Comprehensive failure prediction report in JSON format for each
+    vehicle, containing component-specific failure probabilities, confidence levels,
+    estimated time-to-failure (days/weeks/months), risk severity classification, safety
+    impact assessment, and prioritized maintenance recommendations with cost-benefit
+    analysis
+  agent: diagnosis_agent
+  context:
+  - monitor_vehicle_fleet_data
+engage_customers_with_maintenance_alerts:
+  description: Based on the failure predictions and diagnosis results, proactively
+    contact vehicle owners with personalized maintenance recommendations. Craft clear,
+    non-alarming messages that explain the predicted maintenance needs, their urgency,
+    and benefits of preventive action. Use customers' preferred communication methods
+    (voice calls, mobile app notifications, SMS, email) and personalize messages based
+    on vehicle history, customer preferences, and communication patterns. For critical
+    issues, prioritize voice-based engagement with immediate follow-up via other channels.
+  expected_output: Customer engagement summary report showing all attempted communications,
+    message content used, delivery status for each customer, customer responses received,
+    communication method effectiveness, engagement rates, and follow-up actions required
+    for non-responsive customers
+  agent: customer_engagement_agent
+  context:
+  - predict_component_failures
+schedule_maintenance_appointments:
+  description: Coordinate with customers who responded positively to maintenance alerts
+    and schedule optimal appointments across the {oem_name} service center network.
+    Check availability at service centers based on maintenance type, technician specialization,
+    geographic proximity to customer, and urgency level. Use Iternio API to optimize
+    service vehicle routes for electric vehicle service fleets, identify optimal charging
+    stations, calculate energy consumption, and plan efficient routes between service
+    locations. Balance critical repairs with routine maintenance to optimize service
+    center workloads while considering electric vehicle range limitations and charging
+    infrastructure. Consider customer preferences for appointment timing while ensuring
+    maintenance deadlines are met. Handle appointment confirmations and provide customers
+    with service center details, expected service duration, preparation instructions,
+    and estimated arrival times for mobile service units.
+  expected_output: Comprehensive appointment scheduling report containing confirmed
+    appointments with date, time, service center details, customer information, service
+    type, estimated duration, optimized service center workload analysis, electric
+    vehicle route optimization results with charging station locations, energy consumption
+    estimates, mobile service unit deployment schedule with charging plans, geographic
+    distribution of appointments, and pending scheduling requests that require follow-up
+  agent: scheduling_agent
+  context:
+  - engage_customers_with_maintenance_alerts
+collect_service_feedback_and_update_records:
+  description: Track the progress of all scheduled service appointments until completion
+    and systematically collect post-service feedback from customers. Monitor service
+    completion status, send service completion notifications, and gather customer
+    satisfaction ratings, service quality feedback, and suggestions for improvement.
+    Update maintenance records with completed services, actual vs predicted issues
+    found, service costs, and customer feedback. Identify patterns in service quality,
+    technician performance, and customer satisfaction across different service centers.
+  expected_output: Service completion and feedback analysis report containing service
+    completion rates, customer satisfaction scores, feedback summaries, updated maintenance
+    records, identified service quality trends, technician performance analysis, and
+    recommendations for service process improvements
+  agent: feedback_agent
+  context:
+  - schedule_maintenance_appointments
+generate_manufacturing_quality_insights:
+  description: Perform comprehensive RCA/CAPA-driven analysis by cross-referencing
+    predicted failures with historical maintenance records, manufacturing defect data,
+    and service feedback. Identify recurring failure patterns across the vehicle fleet,
+    analyze manufacturing batch correlations, evaluate supplier quality trends, and
+    generate actionable insights for the {oem_name} manufacturing teams. Focus on
+    preventive actions, design improvements, and quality enhancements that can reduce
+    future defects and improve product reliability.
+  expected_output: Manufacturing quality improvement report containing RCA/CAPA analysis
+    findings, recurring defect patterns, manufacturing batch issue identification,
+    supplier quality assessments, design improvement recommendations, preventive action
+    plans, projected quality improvement impact, and specific manufacturing process
+    modifications to reduce field failures
+  agent: manufacturing_quality_insights_agent
+  context:
+  - collect_service_feedback_and_update_records
+  - predict_component_failures
+generate_comprehensive_business_intelligence_dashboard:
+  description: 'Coordinate the entire autonomous predictive maintenance workflow by
+    collecting and synthesizing results from all specialized agents. Compile a comprehensive
+    end-to-end business intelligence report that includes: 1) Vehicle fleet monitoring
+    results with identified maintenance needs, 2) Component failure predictions with
+    risk assessments, 3) Customer engagement outcomes and response rates, 4) Scheduled
+    appointments and service center coordination, 5) Service feedback analysis and
+    completion status, 6) Manufacturing quality insights and improvement recommendations.
+    Present a complete dashboard showing the entire predictive maintenance workflow
+    performance with actionable business insights.'
+  expected_output: 'Comprehensive Automotive Predictive Maintenance Dashboard containing:
+    **Vehicle Fleet Health Analysis** (sensor readings, anomalies detected, maintenance
+    priority rankings with Critical/High/Medium/Low classifications), **Failure Prediction
+    Intelligence** (component-specific failure probabilities, confidence levels, time-to-failure
+    estimates, safety impact assessments), **Customer Engagement Analytics** (communication
+    success rates, customer response analysis, engagement method effectiveness), **Service
+    Scheduling Optimization** (confirmed appointments, service center workload distribution,
+    geographic optimization), **Service Quality Assessment** (completion rates, customer
+    satisfaction scores, feedback trends, technician performance analysis), **Manufacturing
+    Quality Insights** (RCA/CAPA findings, recurring defect patterns, supplier quality
+    assessments, design improvement recommendations), and **Executive Summary** with
+    key performance indicators, cost savings achieved, operational efficiency metrics,
+    and strategic recommendations for enhancing the predictive maintenance ecosystem'
+  agent: master_orchestrator_agent
+  context:
+  - generate_manufacturing_quality_insights

@@ -1,0 +1,435 @@
+---
+vehicle_data_monitoring_and_analysis:
+  description: Continuously monitor real-time vehicle sensor data and telematics for
+    all {oem_name} fleet vehicles (VEH001-VEH010). Analyze engine parameters, brake
+    conditions, battery status, transmission health, tire pressure, diagnostic trouble
+    codes, and usage patterns. Identify vehicles showing anomalous sensor readings
+    or patterns that indicate potential maintenance needs. Create a comprehensive
+    fleet health report with priority ranking based on urgency of maintenance requirements.
+  expected_output: |
+    Generate a comprehensive vehicle fleet monitoring report in JSON format with the following structure:
+    {
+      "report_title": "Vehicle Fleet Monitoring Report",
+      "executive_summary": {
+        "total_vehicles_monitored": "number",
+        "critical_alerts": "number", 
+        "high_priority_maintenance": "number",
+        "normal_operation": "number"
+      },
+      "vehicle_analysis": [
+        {
+          "vehicle_id": "VHXXX",
+          "current_status": "Normal/Warning/Critical",
+          "key_metrics": {
+            "engine_temperature": "XX°C",
+            "brake_pad_wear": "XX%",
+            "battery_health": "XX%",
+            "tire_pressure": "XX PSI"
+          },
+          "diagnostic_codes": ["list of DTCs"],
+          "maintenance_priority": "Critical/High/Medium/Low",
+          "recommended_actions": ["specific maintenance tasks"]
+        }
+      ],
+      "fleet_health_overview": {
+        "overall_fleet_health_score": "XX%",
+        "most_common_issues": ["top 3 issues"],
+        "maintenance_schedule_recommendations": ["recommendations"]
+      }
+    }
+  agent: data_analysis_agent
+predictive_failure_diagnosis:
+  description: Using the vehicle data analysis and historical maintenance patterns,
+    apply advanced failure prediction models to identify probable component failures
+    for each vehicle. Analyze maintenance history, current sensor readings, usage
+    patterns, and environmental factors to predict when specific components (engine,
+    brakes, transmission, electrical systems) are likely to fail. Assign probability
+    scores, confidence levels, and time-to-failure estimates for each predicted failure.
+    Prioritize predictions based on safety criticality and cost implications.
+  expected_output: |
+    Generate a comprehensive failure prediction report in JSON format with the following structure:
+    {
+      "report_title": "Predictive Failure Diagnosis Report",
+      "diagnosis_summary": {
+        "total_vehicles_analyzed": "number",
+        "high_risk_failures_predicted": "number",
+        "medium_risk_failures_predicted": "number", 
+        "low_risk_failures_predicted": "number"
+      },
+      "component_failure_predictions": [
+        {
+          "vehicle_id": "VHXXX",
+          "component": "Engine/Brakes/Transmission/Electrical",
+          "failure_probability": "XX%",
+          "confidence_level": "High/Medium/Low",
+          "estimated_time_to_failure": "X days/weeks/months",
+          "risk_severity": "Critical/High/Medium/Low",
+          "safety_impact": "description of safety implications",
+          "cost_impact": "$XXX estimated repair cost",
+          "recommended_actions": ["specific preventive measures"]
+        }
+      ],
+      "priority_matrix": {
+        "critical_priority_safety_risk": ["list of vehicles"],
+        "high_priority_cost_risk": ["list of vehicles"],
+        "medium_priority_preventive": ["list of vehicles"]
+      },
+      "maintenance_recommendations": {
+        "immediate_action_required": ["list specific tasks"],
+        "scheduled_maintenance": ["list upcoming tasks"],
+        "long_term_monitoring": ["list components to watch"]
+      }
+    }
+  agent: diagnosis_agent
+  context:
+  - vehicle_data_monitoring_and_analysis
+proactive_customer_outreach:
+  description: Based on the failure predictions and diagnosis results, proactively
+    contact vehicle owners with personalized maintenance recommendations. Craft clear,
+    non-alarming messages that explain the predicted maintenance needs, their urgency,
+    and benefits of preventive action. Use customers' preferred communication methods
+    (voice calls, mobile app notifications, SMS, email) and personalize messages based
+    on vehicle history, customer preferences, and communication patterns. For critical
+    issues, prioritize voice-based engagement with immediate follow-up via other channels.
+  expected_output: |
+    Generate a customer engagement report in JSON format with the following structure:
+    {
+      "report_title": "Customer Engagement Report",
+      "outreach_summary": {
+        "total_customers_contacted": "number",
+        "successful_communications": "number",
+        "response_rate": "XX%",
+        "critical_alerts_sent": "number",
+        "follow_up_actions_required": "number"
+      },
+      "customer_communication_details": [
+        {
+          "customer_name": "name",
+          "vehicle_id": "VHXXX",
+          "communication_method": "Phone/SMS/Email/App",
+          "message_sent": "brief description",
+          "response_status": "Responded/No Response/Pending",
+          "customer_feedback": "if any received",
+          "follow_up_required": "Yes/No",
+          "next_action": "specific follow-up steps"
+        }
+      ],
+      "communication_effectiveness": {
+        "most_effective_method": "Phone/SMS/Email/App",
+        "average_response_time": "X hours",
+        "customer_satisfaction": "High/Medium/Low"
+      },
+      "action_items": {
+        "immediate_follow_up_needed": ["list customers"],
+        "reschedule_communications": ["list customers"],
+        "escalate_to_service_team": ["list customers"]
+      }
+    }
+  agent: customer_engagement_agent
+  context:
+  - predictive_failure_diagnosis
+service_appointment_coordination:
+  description: Coordinate with customers who responded positively to maintenance alerts
+    and schedule optimal appointments across the {oem_name} service center network.
+    Check availability at service centers based on maintenance type, technician specialization,
+    geographic proximity to customer, and urgency level. Use Iternio API to optimize
+    service vehicle routes for electric vehicle service fleets, identify optimal charging
+    stations, calculate energy consumption, and plan efficient routes between service
+    locations. Balance critical repairs with routine maintenance to optimize service
+    center workloads while considering electric vehicle range limitations and charging
+    infrastructure. Consider customer preferences for appointment timing while ensuring
+    maintenance deadlines are met. Handle appointment confirmations and provide customers
+    with service center details, expected service duration, preparation instructions,
+    and estimated arrival times for mobile service units.
+  expected_output: |
+    **SERVICE APPOINTMENT COORDINATION REPORT**
+    
+    **Scheduling Summary:**
+    - Total appointments scheduled: [X]
+    - Confirmed appointments: [X]
+    - Pending confirmations: [X]
+    - Service centers utilized: [X]
+    - Mobile service units deployed: [X]
+    
+    **Appointment Details:**
+    For each scheduled appointment:
+    - Customer Name: [Name]
+    - Vehicle ID: VHXXX
+    - Appointment Date: [Date]
+    - Appointment Time: [Time]
+    - Service Center: [Location]
+    - Service Type: [Maintenance type]
+    - Estimated Duration: [X hours]
+    - Technician Assigned: [Name]
+    - Service Priority: [Critical/High/Medium/Low]
+    - Special Requirements: [Any specific needs]
+    - Customer Confirmation: [Confirmed/Pending/Declined]
+    
+    **Service Center Optimization:**
+    - Workload Distribution: [Balanced/Overloaded/Underutilized]
+    - Geographic Coverage: [Coverage analysis]
+    - Technician Availability: [Availability status]
+    
+    **Route Optimization (Electric Vehicles):**
+    - Charging Stations Identified: [X stations]
+    - Energy Consumption Estimate: [X kWh]
+    - Route Efficiency: [XX% optimized]
+    - Mobile Service Routes: [Route details]
+    
+    **Action Items:**
+    - Follow-up confirmations needed: [List appointments]
+    - Reschedule requests: [List appointments]
+    - Technician reassignments: [List if needed]
+    
+    Format as a professional scheduling coordination report.
+  agent: scheduling_agent
+  context:
+  - proactive_customer_outreach
+post_service_feedback_collection:
+  description: Track the progress of all scheduled service appointments until completion
+    and systematically collect post-service feedback from customers. Monitor service
+    completion status, send service completion notifications, and gather customer
+    satisfaction ratings, service quality feedback, and suggestions for improvement.
+    Update maintenance records with completed services, actual vs predicted issues
+    found, service costs, and customer feedback. Identify patterns in service quality,
+    technician performance, and customer satisfaction across different service centers.
+  expected_output: |
+    **POST-SERVICE FEEDBACK COLLECTION REPORT**
+    
+    **Service Completion Summary:**
+    - Total services completed: [X]
+    - On-time completions: [X]
+    - Delayed services: [X]
+    - Customer satisfaction average: [X.X/5]
+    - Feedback response rate: XX%
+    
+    **Service Details:**
+    For each completed service:
+    - Customer Name: [Name]
+    - Vehicle ID: VHXXX
+    - Service Date: [Date]
+    - Service Type: [Maintenance type]
+    - Technician: [Name]
+    - Service Duration: [Actual vs Estimated]
+    - Issues Found: [Actual vs Predicted]
+    - Service Cost: $XXX
+    - Customer Rating: [X/5 stars]
+    - Customer Feedback: [Comments]
+    - Follow-up Required: [Yes/No]
+    
+    **Quality Analysis:**
+    - Service Quality Trends: [Improving/Stable/Declining]
+    - Most Common Issues: [List top issues]
+    - Technician Performance: [Performance ratings]
+    - Service Center Comparison: [Performance by location]
+    
+    **Customer Satisfaction Insights:**
+    - Satisfaction Drivers: [What customers appreciate]
+    - Improvement Areas: [Areas needing attention]
+    - Customer Suggestions: [Key suggestions received]
+    
+    **Action Items:**
+    - Follow-up services needed: [List vehicles]
+    - Technician training required: [List areas]
+    - Process improvements: [List recommendations]
+    
+    Format as a professional service quality report.
+  agent: feedback_agent
+  context:
+  - service_appointment_coordination
+manufacturing_quality_analysis_and_capa_generation:
+  description: Perform comprehensive RCA/CAPA-driven analysis by cross-referencing
+    predicted failures with historical maintenance records, manufacturing defect data,
+    and service feedback. Identify recurring failure patterns across the vehicle fleet,
+    analyze manufacturing batch correlations, evaluate supplier quality trends, and
+    generate actionable insights for the {oem_name} manufacturing teams. Focus on
+    preventive actions, design improvements, and quality enhancements that can reduce
+    future defects and improve product reliability.
+  expected_output: |
+    **MANUFACTURING QUALITY ANALYSIS & CAPA REPORT**
+    
+    **RCA/CAPA Summary:**
+    - Root causes identified: [X]
+    - Corrective actions implemented: [X]
+    - Preventive actions planned: [X]
+    - Quality improvement impact: XX%
+    - Cost savings achieved: $XXX
+    
+    **Failure Pattern Analysis:**
+    - Recurring failure patterns: [List patterns]
+    - Manufacturing batch correlations: [Batch analysis]
+    - Supplier quality trends: [Supplier performance]
+    - Design flaw identification: [Design issues found]
+    
+    **Component Analysis:**
+    For each problematic component:
+    - Component Name: [Component]
+    - Failure Rate: XX%
+    - Root Cause: [Primary cause]
+    - Contributing Factors: [Secondary causes]
+    - Corrective Action: [Action taken]
+    - Preventive Measure: [Prevention strategy]
+    - Implementation Timeline: [Timeline]
+    
+    **Quality Improvement Recommendations:**
+    - Design Modifications: [Specific design changes]
+    - Process Improvements: [Manufacturing process changes]
+    - Supplier Actions: [Supplier improvement requirements]
+    - Testing Enhancements: [Quality testing improvements]
+    
+    **CAPA Implementation Plan:**
+    - Immediate Actions (0-30 days): [List actions]
+    - Short-term Actions (1-6 months): [List actions]
+    - Long-term Actions (6+ months): [List actions]
+    - Success Metrics: [KPIs to track]
+    
+    **Projected Impact:**
+    - Defect Reduction: XX%
+    - Cost Savings: $XXX annually
+    - Customer Satisfaction Improvement: XX%
+    - Warranty Claims Reduction: XX%
+    
+    Format as a professional manufacturing quality report.
+  agent: manufacturing_quality_insights_agent
+  context:
+  - post_service_feedback_collection
+  - predictive_failure_diagnosis
+security_monitoring_and_compliance:
+  description: Monitor system security and compliance for the predictive maintenance platform, identifying potential vulnerabilities and ensuring data protection standards are met
+  expected_output: |
+    **SECURITY MONITORING & COMPLIANCE REPORT**
+    
+    **Security Assessment Summary:**
+    - Total vulnerabilities found: [X]
+    - Critical vulnerabilities: [X]
+    - High-risk vulnerabilities: [X]
+    - Medium-risk vulnerabilities: [X]
+    - Low-risk vulnerabilities: [X]
+    - Compliance status: [Compliant/Non-compliant]
+    
+    **Vulnerability Details:**
+    For each identified vulnerability:
+    - Vulnerability Type: [SQL Injection/XSS/Data Breach/etc.]
+    - Severity Level: [Critical/High/Medium/Low]
+    - Affected System: [System component]
+    - Risk Impact: [Description of potential impact]
+    - Remediation Status: [Fixed/In Progress/Planned]
+    - Remediation Timeline: [Timeline]
+    
+    **Compliance Status:**
+    - Data Protection Standards: [Compliant/Non-compliant]
+    - Industry Regulations: [Status]
+    - Security Certifications: [Current status]
+    - Audit Requirements: [Compliance status]
+    
+    **Security Recommendations:**
+    - Immediate Actions: [Critical security fixes]
+    - Short-term Improvements: [Security enhancements]
+    - Long-term Strategy: [Security roadmap]
+    - Training Requirements: [Security training needs]
+    
+    **Risk Mitigation Plan:**
+    - Risk Assessment: [Risk levels]
+    - Mitigation Strategies: [Risk reduction plans]
+    - Monitoring Enhancements: [Security monitoring improvements]
+    - Incident Response: [Response procedures]
+    
+    Format as a professional security compliance report.
+  agent: ueba_security_monitoring_agent
+  context:
+  - manufacturing_quality_analysis_and_capa_generation
+master_workflow_orchestration:
+  description: 'Coordinate the entire autonomous predictive maintenance workflow by
+    collecting and synthesizing results from all specialized agents. Compile a comprehensive
+    end-to-end business intelligence report that includes: 1) Vehicle fleet monitoring
+    results with identified maintenance needs, 2) Component failure predictions with
+    risk assessments, 3) Customer engagement outcomes and response rates, 4) Scheduled
+    appointments and service center coordination, 5) Service feedback analysis and
+    completion status, 6) Manufacturing quality insights and improvement recommendations.
+    Present a complete dashboard showing the entire predictive maintenance workflow
+    performance with actionable business insights.'
+  expected_output: |
+    **COMPREHENSIVE AUTOMOTIVE PREDICTIVE MAINTENANCE DASHBOARD**
+    
+    **EXECUTIVE SUMMARY**
+    - Total Vehicles Monitored: {vehicle_count}
+    - Critical Maintenance Alerts: [X]
+    - Customer Engagement Rate: XX%
+    - Service Completion Rate: XX%
+    - Overall System Health: [Excellent/Good/Fair/Poor]
+    - Cost Savings Achieved: $XXX
+    - Customer Satisfaction Score: [X.X/5]
+    
+    **VEHICLE FLEET HEALTH ANALYSIS**
+    - Fleet Health Score: XX%
+    - Vehicles Requiring Immediate Attention: [X]
+    - Preventive Maintenance Scheduled: [X]
+    - Critical Issues Resolved: [X]
+    - Maintenance Cost Reduction: XX%
+    
+    **FAILURE PREDICTION INTELLIGENCE**
+    - High-Risk Failures Predicted: [X]
+    - Accuracy Rate: XX%
+    - Preventive Actions Taken: [X]
+    - Safety Incidents Prevented: [X]
+    - Warranty Claims Reduced: XX%
+    
+    **CUSTOMER ENGAGEMENT ANALYTICS**
+    - Total Customers Contacted: [X]
+    - Response Rate: XX%
+    - Customer Satisfaction: [X.X/5]
+    - Communication Effectiveness: [High/Medium/Low]
+    - Follow-up Actions Required: [X]
+    
+    **SERVICE SCHEDULING OPTIMIZATION**
+    - Appointments Scheduled: [X]
+    - Service Centers Utilized: [X]
+    - Technician Utilization: XX%
+    - Route Optimization Efficiency: XX%
+    - Mobile Service Deployments: [X]
+    
+    **SERVICE QUALITY ASSESSMENT**
+    - Service Completion Rate: XX%
+    - On-Time Service Rate: XX%
+    - Customer Feedback Score: [X.X/5]
+    - Technician Performance Rating: [X.X/5]
+    - Service Quality Trends: [Improving/Stable/Declining]
+    
+    **MANUFACTURING QUALITY INSIGHTS**
+    - Root Causes Identified: [X]
+    - Corrective Actions Implemented: [X]
+    - Quality Improvement Impact: XX%
+    - Defect Reduction: XX%
+    - Manufacturing Cost Savings: $XXX
+    
+    **SECURITY & COMPLIANCE STATUS**
+    - Security Vulnerabilities Found: [X]
+    - Compliance Status: [Compliant/Non-compliant]
+    - Security Incidents: [X]
+    - Data Protection Status: [Secure/At Risk]
+    
+    **KEY PERFORMANCE INDICATORS**
+    - Predictive Accuracy: XX%
+    - Customer Retention Rate: XX%
+    - Service Efficiency: XX%
+    - Cost Reduction: XX%
+    - Safety Improvement: XX%
+    
+    **STRATEGIC RECOMMENDATIONS**
+    - Immediate Actions Required: [List critical actions]
+    - Process Improvements: [List improvements]
+    - Technology Enhancements: [List enhancements]
+    - Training Requirements: [List training needs]
+    - Investment Priorities: [List investment areas]
+    
+    **NEXT QUARTER FOCUS AREAS**
+    1. [Priority area 1]
+    2. [Priority area 2]
+    3. [Priority area 3]
+    4. [Priority area 4]
+    5. [Priority area 5]
+    
+    Format as a comprehensive executive dashboard report with clear sections, metrics, and actionable insights.
+  agent: master_orchestrator_agent
+  context:
+  - manufacturing_quality_analysis_and_capa_generation

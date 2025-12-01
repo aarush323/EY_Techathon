@@ -1,0 +1,67 @@
+.container {
+  max_width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  color: #333;
+}
+
+header {
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 1rem;
+}
+
+h1 {
+  font-size: 2rem;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.timestamp {
+  color: #666;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.report-content {
+  background: #f9f9f9;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  line-height: 1.6;
+}
+
+.report-content h1,
+.report-content h2,
+.report-content h3 {
+  color: #2c3e50;
+  margin-top: 1.5rem;
+}
+
+.report-content ul,
+.report-content ol {
+  padding-left: 1.5rem;
+}
+
+.report-content li {
+  margin-bottom: 0.5rem;
+}
+
+.loading,
+.error {
+  text-align: center;
+  padding: 2rem;
+  background: #f0f0f0;
+  border-radius: 8px;
+}
+
+.error {
+  background: #fff0f0;
+  color: #d32f2f;
+}
+
+.hint {
+  font-size: 0.9rem;
+  color: #666;
+}

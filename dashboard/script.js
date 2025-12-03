@@ -1,4 +1,31 @@
 // ============================================================================
+// ENHANCED MARKDOWN → STRUCTURED JSON PARSER & DASHBOARD RENDERER
+// Extracts data according to strict schema and conditionally renders UI
+// ============================================================================
+
+// ============================================================================
+// UTILITY: HAS DATA HELPER
+// ============================================================================
+function hasData(value) {
+  if (value === null || value === undefined || value === "") return false;
+  if (value === 0) return true;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") return Object.keys(value).length > 0;
+  return true;
+}
+
+// ============================================================================
+// UTILITY: FORMAT PERCENTAGE (SMART SCALING)
+// ============================================================================
+function formatPercentage(value) {
+  if (value === null || value === undefined) return '--';
+  let num = parseFloat(value);
+  if (isNaN(num)) return value;
+  if (num <= 1 && num > 0) num = num * 100;
+  return Math.round(num * 10) / 10 + '%';
+}
+
+// ============================================================================
 // MAIN ENTRY POINT
 // ============================================================================
 document.addEventListener("DOMContentLoaded", () => {
@@ -14,777 +41,478 @@ async function fetchDashboardData() {
     if (!response.ok) throw new Error('Network response was not ok');
     const data = await response.json();
 
-    // Expected format: { report_text: "<markdown>", timestamp: "..." }
     if (data.report_text) {
-      // Process markdown
-      processMarkdownPipeline(data.report_text, data.timestamp);
+      console.log('📄 Processing markdown report...');
+      const structuredData = parseMarkdownToSchema(data.report_text);
+      console.log('✅ Parsed structured data:', structuredData);
+
+      renderDashboard(structuredData, data.timestamp);
+
+      // Render ALL tables found in the markdown at the bottom
+      renderRawTables(structuredData.all_tables);
     } else {
-      // Fallback: Assume data is already structured JSON (legacy format)
-      console.log('No markdown found, using legacy JSON format');
+      console.log('⚠️ No markdown found, checking for legacy JSON format');
       renderDashboard(data);
     }
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
+    console.error('❌ Error fetching dashboard data:', error);
     showErrorState();
   }
 }
 
 // ============================================================================
-// STEP 2-6: MARKDOWN → HTML → STRUCTURED JSON PIPELINE
+// MARKDOWN → SCHEMA PARSER (MAIN FUNCTION)
 // ============================================================================
-function processMarkdownPipeline(markdownText, timestamp) {
-  try {
-    console.log('📄 Starting markdown parsing pipeline...');
+function parseMarkdownToSchema(markdownText) {
+  const schema = {
+    fleet_metrics: {
+      fleet_health_score: null,
+      critical_count: null,
+      high_count: null,
+      medium_count: null,
+      low_count: null,
+      predicted_failures_total: null
+    },
+    all_tables: [] // Store ALL tables for raw rendering & smart chart mapping
+  };
 
-    // STEP 2: Convert markdown → HTML using marked.js
-    const html = marked.parse(markdownText);
-    console.log('✅ Markdown converted to HTML');
+  const html = marked.parse(markdownText);
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
 
-    // STEP 3: Load HTML into Cheerio (browser mode)
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, "text/html");
-    console.log('✅ HTML loaded into DOMParser');
+  // Extract all tables
+  schema.all_tables = extractAllTablesWithContext(doc, markdownText);
 
-    // STEP 4: Extract all tables dynamically
-    const tables = extractAllTables(doc);
-    console.log('✅ Extracted tables:', tables);
+  // Extract KPIs from text
+  extractFleetMetrics(markdownText, schema);
+  extractCustomerEngagementMetrics(markdownText, schema);
+  extractServiceMetrics(markdownText, schema);
 
-    // STEP 5: Extract KPIs from markdown using regex
-    const kpis = extractKPIsFromMarkdown(markdownText);
-    console.log('✅ Extracted KPIs:', kpis);
-
-    // STEP 6: Build structured data models
-    const structuredData = buildDataModels(tables, kpis);
-    console.log('✅ Built structured data:', structuredData);
-
-    // STEP 7-8: Render dashboard
-    renderDashboard(structuredData, timestamp);
-
-  } catch (error) {
-    console.error('❌ Error in markdown pipeline:', error);
-    // STEP 9: Fallback - render tables directly from markdown
-    fallbackRender(markdownText);
-  }
+  return schema;
 }
 
 // ============================================================================
-// TABLE EXTRACTION (STEP 4)
+// TABLE EXTRACTION
 // ============================================================================
-function extractAllTables(doc) {
+function extractAllTablesWithContext(doc, markdownText) {
   const tables = [];
   const tableElements = doc.querySelectorAll("table");
 
-  tableElements.forEach((table) => {
-    // Extract headers
+  tableElements.forEach((table, index) => {
     const headers = [];
-    table.querySelectorAll("th").forEach(th => {
-      headers.push(th.textContent.trim());
-    });
+    table.querySelectorAll("th").forEach(th => headers.push(th.textContent.trim()));
 
-    // Extract rows
     const rows = [];
     table.querySelectorAll("tr").forEach(tr => {
       const cells = tr.querySelectorAll("td");
       if (cells.length > 0) {
         const rowObj = {};
         cells.forEach((td, idx) => {
-          if (headers[idx]) {
-            rowObj[headers[idx]] = td.textContent.trim();
-          }
+          if (headers[idx]) rowObj[headers[idx]] = td.textContent.trim();
         });
-        if (Object.keys(rowObj).length) {
-          rows.push(rowObj);
-        }
+        if (Object.keys(rowObj).length) rows.push(rowObj);
       }
     });
 
-    // Classify the table like before
-    const tableType = classifyTable(headers);
-
-    tables.push({
-      type: tableType,
-      headers: headers,
-      rows: rows,
-    });
+    const context = findTableContext(table, doc);
+    tables.push({ headers, rows, context, index });
   });
 
   return tables;
 }
 
-
-// ============================================================================
-// TABLE CLASSIFICATION (DYNAMIC, NO HARDCODING)
-// ============================================================================
-function classifyTable(headers) {
-  const headerText = headers.join(' ').toLowerCase();
-
-  // Fleet health table: contains "Vehicle", "Sensor", or "Maintenance"
-  if (headerText.includes('vehicle') || headerText.includes('sensor') || headerText.includes('maintenance') || headerText.includes('priority')) {
-    return 'fleet';
-  }
-
-  // Failure prediction table: contains "Component", "Failure", or "Confidence"
-  if (headerText.includes('component') || headerText.includes('failure') || headerText.includes('confidence') || headerText.includes('probability')) {
-    return 'failures';
-  }
-
-  // Engagement table: contains "Engagement" or "Method"
-  if (headerText.includes('engagement') || headerText.includes('method') || headerText.includes('communication') || headerText.includes('channel')) {
-    return 'engagement';
-  }
-
-  // Scheduling table: contains "Appointment" or "Service Center"
-  if (headerText.includes('appointment') || headerText.includes('service center') || headerText.includes('workload') || headerText.includes('scheduled')) {
-    return 'scheduling';
-  }
-
-  // Service quality table: contains "Completion" or "Satisfaction"
-  if (headerText.includes('completion') || headerText.includes('satisfaction') || headerText.includes('quality') || headerText.includes('feedback')) {
-    return 'quality';
-  }
-
-  // KPI table: contains "KPI" or "Current"
-  if (headerText.includes('kpi') || headerText.includes('metric') || headerText.includes('current') || headerText.includes('score')) {
-    return 'kpis';
-  }
-
-  // Default: unknown
-  return 'unknown';
-}
-
-// ============================================================================
-// KPI EXTRACTION USING REGEX (STEP 5)
-// ============================================================================
-function extractKPIsFromMarkdown(md) {
-  const kpis = {};
-
-  // Fleet Health Score - flexible regex for colons, hyphens, en-dashes
-  let match = /Fleet Health Score[\s::\-–—]+([\d.]+)%?/i.exec(md);
-  if (match) kpis.fleetHealthScore = parseFloat(match[1]);
-
-  // Overall Engagement Rate
-  match = /Overall Engagement Rate[\s::\-–—]+([\d.]+)%?/i.exec(md);
-  if (match) kpis.engagementRate = parseFloat(match[1]);
-
-  // Service Center Utilization (may have ranges like "65-85%")
-  match = /Service Center Utilization[\s::\-–—]+([\d]+)[\s–-]*([\d]*)%?/i.exec(md);
-  if (match) {
-    kpis.serviceCenterUtilization = match[2] ? parseFloat(match[2]) : parseFloat(match[1]);
-  }
-
-  // Customer Satisfaction
-  match = /Customer Satisfaction[\s::\-–—]+([\d.]+)%?/i.exec(md);
-  if (match) kpis.customerSatisfaction = parseFloat(match[1]);
-
-  // Critical Vehicles
-  match = /Critical[\s::\-–—]+([\d]+)/i.exec(md);
-  if (match) kpis.criticalVehicles = parseInt(match[1]);
-
-  // Average Monthly Usage
-  match = /Average.*Usage[\s::\-–—]+([\d]+)\s*(mi|miles|km)?/i.exec(md);
-  if (match) kpis.avgMonthlyUsage = parseInt(match[1]);
-
-  // Cost Savings
-  match = /Cost Savings[\s::\-–—]+\$?([\d,]+)/i.exec(md);
-  if (match) {
-    kpis.costSavings = parseInt(match[1].replace(/,/g, ''));
-  }
-
-  // Predictive Accuracy
-  match = /Predictive Accuracy[\s::\-–—]+([\d.]+)%?/i.exec(md);
-  if (match) kpis.predictiveAccuracy = parseFloat(match[1]);
-
-  return kpis;
-}
-
-// ============================================================================
-// BUILD DATA MODELS (STEP 6)
-// ============================================================================
-function buildDataModels(tables, kpis) {
-  const data = {
-    fleet: {},
-    failures: {},
-    engagement: {},
-    scheduling: {},
-    quality: {},
-    kpis: kpis
-  };
-
-  // Process each table
-  tables.forEach(table => {
-    switch (table.type) {
-      case 'fleet':
-        data.fleet = processFleetTable(table.rows);
-        break;
-      case 'failures':
-        data.failures = processFailuresTable(table.rows);
-        break;
-      case 'engagement':
-        data.engagement = processEngagementTable(table.rows);
-        break;
-      case 'scheduling':
-        data.scheduling = processSchedulingTable(table.rows);
-        break;
-      case 'quality':
-        data.quality = processQualityTable(table.rows);
-        break;
-      case 'kpis':
-        // Merge with regex-extracted KPIs
-        Object.assign(data.kpis, processKPITable(table.rows));
-        break;
+function findTableContext(tableElement, doc) {
+  let currentNode = tableElement.previousElementSibling;
+  while (currentNode) {
+    if (['h1', 'h2', 'h3', 'h4'].includes(currentNode.tagName.toLowerCase())) {
+      return currentNode.textContent.trim().toLowerCase();
     }
-  });
-
-  return data;
-}
-
-// ============================================================================
-// TABLE PROCESSORS
-// ============================================================================
-function processFleetTable(rows) {
-  const vehicles = rows.map(row => ({
-    vehicle_id: findValue(row, ['vehicle', 'id', 'vehicle id']),
-    status: findValue(row, ['status', 'health', 'condition']),
-    priority: findValue(row, ['priority', 'severity', 'level']),
-    sensor_status: findValue(row, ['sensor', 'sensors']),
-    maintenance: findValue(row, ['maintenance', 'next service'])
-  }));
-
-  const critical = vehicles.filter(v => v.priority && v.priority.toLowerCase().includes('critical')).length;
-  const warning = vehicles.filter(v => v.priority && (v.priority.toLowerCase().includes('warning') || v.priority.toLowerCase().includes('medium'))).length;
-  const healthy = vehicles.filter(v => v.priority && (v.priority.toLowerCase().includes('low') || v.priority.toLowerCase().includes('healthy'))).length;
-
-  return {
-    vehicles: vehicles,
-    total_vehicles: vehicles.length,
-    critical: critical,
-    warning: warning,
-    healthy: healthy
-  };
-}
-
-function processFailuresTable(rows) {
-  const predictions = rows.map(row => ({
-    vehicle_id: findValue(row, ['vehicle', 'id', 'vehicle id']),
-    component: findValue(row, ['component', 'part', 'system']),
-    failure_probability: parseFloatSafe(findValue(row, ['failure', 'probability', 'risk', 'failure probability', 'failure risk'])),
-    confidence_level: parseFloatSafe(findValue(row, ['confidence', 'confidence level'])),
-    cost_implications: parseIntSafe(findValue(row, ['cost', 'cost implications', 'cost est', 'estimated cost']))
-  }));
-
-  return {
-    predictions: predictions,
-    total_predictions: predictions.length
-  };
-}
-
-function processEngagementTable(rows) {
-  const methods = {};
-  const engagements = rows.map(row => {
-    const method = findValue(row, ['method', 'channel', 'communication method']);
-    const count = parseIntSafe(findValue(row, ['count', 'total', 'engagements']));
-
-    if (method) {
-      const methodKey = method.toLowerCase().replace(/\s+/g, '_');
-      methods[methodKey] = (methods[methodKey] || 0) + (count || 1);
-    }
-
-    return {
-      method: method,
-      status: findValue(row, ['status', 'response']),
-      count: count
-    };
-  });
-
-  return {
-    communication_methods: methods,
-    engagements: engagements,
-    total_customers: rows.length
-  };
-}
-
-function processSchedulingTable(rows) {
-  const appointments = rows.map(row => ({
-    appointment_id: findValue(row, ['appointment', 'id', 'appointment id']),
-    vehicle_id: findValue(row, ['vehicle', 'vehicle id']),
-    service_center: findValue(row, ['service center', 'center', 'location']),
-    scheduled_date: findValue(row, ['date', 'scheduled', 'appointment date']),
-    workload: parseIntSafe(findValue(row, ['workload', 'capacity', 'utilization']))
-  }));
-
-  const centers = _.groupBy(appointments.filter(a => a.service_center), 'service_center');
-  const service_centers = Object.keys(centers).map(name => ({
-    name: name,
-    appointments_today: centers[name].length,
-    capacity: 20 // Default
-  }));
-
-  return {
-    appointments: appointments,
-    service_centers: service_centers,
-    total_appointments: appointments.length
-  };
-}
-
-function processQualityTable(rows) {
-  return {
-    completion_rate: parseFloatSafe(findValue(rows[0] || {}, ['completion', 'completion rate'])) || 95,
-    customer_satisfaction_score: parseFloatSafe(findValue(rows[0] || {}, ['satisfaction', 'customer satisfaction'])) || 87
-  };
-}
-
-function processKPITable(rows) {
-  const kpis = {};
-  rows.forEach(row => {
-    const name = findValue(row, ['kpi', 'metric', 'name']);
-    const value = findValue(row, ['value', 'current', 'score']);
-    if (name && value) {
-      const key = name.toLowerCase().replace(/\s+/g, '_');
-      kpis[key] = parseFloatSafe(value);
-    }
-  });
-  return kpis;
-}
-
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
-function findValue(obj, possibleKeys) {
-  for (let key of Object.keys(obj)) {
-    const lowerKey = key.toLowerCase();
-    for (let searchKey of possibleKeys) {
-      if (lowerKey.includes(searchKey.toLowerCase())) {
-        return obj[key];
-      }
-    }
+    currentNode = currentNode.previousElementSibling;
   }
-  return null;
-}
-
-function parseFloatSafe(value) {
-  if (!value) return 0;
-  const num = parseFloat(String(value).replace(/[^0-9.-]/g, ''));
-  return isNaN(num) ? 0 : num;
-}
-
-function parseIntSafe(value) {
-  if (!value) return 0;
-  const num = parseInt(String(value).replace(/[^0-9-]/g, ''));
-  return isNaN(num) ? 0 : num;
+  return '';
 }
 
 // ============================================================================
-// STEP 7-8: RENDER DASHBOARD
+// EXTRACT METRICS (REGEX)
+// ============================================================================
+function extractFleetMetrics(text, schema) {
+  let match = /Fleet Health Score[\s::\-–—]+([\d.]+)%?/i.exec(text);
+  if (match) schema.fleet_metrics.fleet_health_score = parseFloat(match[1]);
+  match = /Critical[\s:]+([\d]+)/i.exec(text);
+  if (match) schema.fleet_metrics.critical_count = parseInt(match[1]);
+  match = /Total.*Predicted.*Failures[\s::\-–—]+([\d]+)/i.exec(text);
+  if (match) schema.fleet_metrics.predicted_failures_total = parseInt(match[1]);
+}
+
+function extractCustomerEngagementMetrics(text, schema) {
+  if (!schema.customer_engagement) schema.customer_engagement = { overall_metrics: {} };
+  let match = /Success Rate[\s::\-–—]+([\d.]+)%?/i.exec(text);
+  if (match) schema.customer_engagement.overall_metrics.success_rate = parseFloat(match[1]);
+}
+
+function extractServiceMetrics(text, schema) {
+  if (!schema.service_scheduling) schema.service_scheduling = {};
+  let match = /Average Wait Time[\s::\-–—]+([\d.]+)\s*(days?)/i.exec(text);
+  if (match) schema.service_scheduling.avg_wait_time_days = parseFloat(match[1]);
+}
+
+// ============================================================================
+// RENDER DASHBOARD
 // ============================================================================
 function renderDashboard(data, timestamp) {
   renderKPIs(data);
-  renderCharts(data);
-  renderMaintenanceTable(data);
+  // Pass ALL tables to chart renderer for smart mapping
+  renderCharts(data.all_tables, data.fleet_metrics);
 
-  // Update timestamp
   if (timestamp) {
-    document.getElementById('last-updated-date').textContent = new Date(timestamp).toLocaleDateString();
+    const dateEl = document.getElementById('last-updated-date');
+    if (dateEl) dateEl.textContent = new Date(timestamp).toLocaleDateString();
   }
 }
 
-// ============================================================================
-// RENDER KPIs
-// ============================================================================
 function renderKPIs(data) {
   const kpiContainer = document.getElementById('kpi-container');
-  const kpis = data.kpis || {};
-  const fleet = data.fleet || {};
-  const engagement = data.engagement || {};
+  if (!kpiContainer) return;
+  const metrics = data.fleet_metrics || {};
+  const engagement = data.customer_engagement?.overall_metrics || {};
+  const scheduling = data.service_scheduling || {};
 
-  const kpiCards = [
-    {
-      title: "Fleet Health Score",
-      value: `${kpis.fleetHealthScore || kpis.fleet_health_score || 85}%`,
-      trend: "+2.5%",
-      isPositive: true
-    },
-    {
-      title: "Critical Priority Vehicles",
-      value: fleet.critical || kpis.criticalVehicles || 0,
-      trend: fleet.critical > 0 ? "Action Req" : "Stable",
-      isPositive: (fleet.critical || 0) === 0
-    },
-    {
-      title: "Avg Monthly Vehicle Usage",
-      value: `${kpis.avgMonthlyUsage || 1350} mi`,
-      trend: "vs last month",
-      isPositive: true
-    },
-    {
-      title: "Service Center Utilization",
-      value: `${kpis.serviceCenterUtilization || kpis.service_center_utilization || 78}%`,
-      trend: "Optimal",
-      isPositive: true
-    },
-    {
-      title: "Customer Engagement Rate",
-      value: `${kpis.engagementRate || kpis.engagement_rate || engagement.engagement_rate || 92}%`,
-      trend: "+5.0%",
-      isPositive: true
-    }
+  const potentialKpis = [
+    { title: "Fleet Health Score", value: formatPercentage(metrics.fleet_health_score), trend: "+2.5%", isPositive: true },
+    { title: "Critical Priority Vehicles", value: metrics.critical_count, trend: metrics.critical_count > 0 ? "Action Req" : "Stable", isPositive: (metrics.critical_count || 0) === 0 },
+    { title: "Customer Success Rate", value: formatPercentage(engagement.success_rate), trend: "+5.0%", isPositive: true },
+    { title: "Avg Wait Time", value: scheduling.avg_wait_time_days ? `${scheduling.avg_wait_time_days} days` : null, trend: "Optimal", isPositive: true },
+    { title: "Predicted Failures", value: metrics.predicted_failures_total, trend: "Monitored", isPositive: false }
   ];
 
-  kpiContainer.innerHTML = kpiCards.map(kpi => `
+  const validKpis = potentialKpis.filter(kpi => hasData(kpi.value) && kpi.value !== null);
+  kpiContainer.innerHTML = validKpis.map(kpi => `
     <div class="kpi-card">
       <div class="kpi-title">${kpi.title}</div>
       <div class="kpi-value">${kpi.value}</div>
-      <div class="kpi-trend ${kpi.isPositive ? 'trend-up' : 'trend-down'}">
-        ${kpi.trend}
-      </div>
+      <div class="kpi-trend ${kpi.isPositive ? 'trend-up' : 'trend-down'}">${kpi.trend}</div>
     </div>
   `).join('');
 }
 
 // ============================================================================
-// RENDER CHARTS (STEP 7)
+// SMART CHART MAPPING & RENDERING
 // ============================================================================
-function renderCharts(data) {
-  const purple = '#6c63ff';
-  const purpleLight = 'rgba(108, 99, 255, 0.2)';
+function renderCharts(tables, metrics) {
+  Chart.defaults.font.family = "'Inter', sans-serif";
+  Chart.defaults.color = '#636e72';
 
-  // Destroy existing charts if they exist
   Chart.helpers.each(Chart.instances, function (instance) {
     instance.destroy();
   });
 
-  // 1. Fleet Health Trend (Simulated)
-  renderFleetHealthTrend(data);
+  // 1. Fleet Health Trend
+  if (metrics && hasData(metrics.fleet_health_score)) {
+    renderFleetHealthTrend(metrics.fleet_health_score);
+  } else {
+    hideChart('healthTrendChart');
+  }
 
-  // 2. Priority Distribution
-  renderPriorityDistribution(data);
+  // 2. Priority Distribution (Find any table with Priority column)
+  const priorityTable = findTableWithColumn(tables, ['Priority', 'Status', 'Risk Level']);
+  if (priorityTable) {
+    renderPriorityDistribution(priorityTable);
+  } else {
+    hideChart('priorityDistChart');
+  }
 
-  // 3. Component Failure Probabilities
-  renderComponentFailures(data);
+  // 3. Component Failures (Find table with Probability/Risk)
+  const failureTable = findTableWithColumn(tables, ['Probability', 'Failure Probability', 'Risk Score']);
+  if (failureTable) {
+    renderComponentFailures(failureTable);
+  } else {
+    hideChart('failureProbChart');
+  }
 
-  // 4. Service Center Workload
-  renderServiceWorkload(data);
+  // 4. Service Workload (Find table with Utilization/Workload)
+  const workloadTable = findTableWithColumn(tables, ['Utilization', 'Workload', 'Capacity']);
+  if (workloadTable) {
+    renderServiceWorkload(workloadTable);
+  } else {
+    hideChart('serviceWorkloadChart');
+  }
 
-  // 5. Engagement by Channel
-  renderEngagementChannels(data);
-}
-
-function renderFleetHealthTrend(data) {
-  try {
-    const ctx = document.getElementById('healthTrendChart').getContext('2d');
-    const kpis = data.kpis || {};
-    const currentScore = kpis.fleetHealthScore || kpis.fleet_health_score || 85;
-
-    // Simulate 6 months trend
-    const trendData = [
-      currentScore - 5,
-      currentScore - 3,
-      currentScore - 4,
-      currentScore - 2,
-      currentScore - 1,
-      currentScore
-    ];
-    const labels = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-    new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Fleet Health Score',
-          data: trendData,
-          borderColor: '#6c63ff',
-          backgroundColor: 'rgba(108, 99, 255, 0.2)',
-          fill: true,
-          tension: 0.4
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: false, min: 60, max: 100 } }
-      }
-    });
-  } catch (error) {
-    console.error('Error rendering fleet health trend:', error);
+  // 5. Engagement (Find table with Channel/Method)
+  const engagementTable = findTableWithColumn(tables, ['Channel', 'Method', 'Source']);
+  if (engagementTable) {
+    renderEngagementChannels(engagementTable);
+  } else {
+    hideChart('engagementChannelChart');
   }
 }
 
-function renderPriorityDistribution(data) {
-  try {
-    const ctx = document.getElementById('priorityDistChart').getContext('2d');
-    const fleet = data.fleet || {};
-
-    new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels: ['Healthy', 'Warning', 'Critical'],
-        datasets: [{
-          data: [fleet.healthy || 0, fleet.warning || 0, fleet.critical || 0],
-          backgroundColor: ['#00b894', '#fdcb6e', '#ff7675'],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom' } },
-        cutout: '70%'
-      }
-    });
-  } catch (error) {
-    console.error('Error rendering priority distribution:', error);
-  }
+// Helper to find a table that contains ANY of the target columns (case-insensitive)
+function findTableWithColumn(tables, targetColumns) {
+  return tables.find(table =>
+    table.headers.some(h =>
+      targetColumns.some(target => h.toLowerCase().includes(target.toLowerCase()))
+    )
+  );
 }
 
-function renderComponentFailures(data) {
-  try {
-    const ctx = document.getElementById('failureProbChart').getContext('2d');
-    const failures = data.failures || {};
-    const predictions = failures.predictions || [];
+function hideChart(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (canvas) canvas.closest('.chart-card').style.display = 'none';
+}
 
-    // Group by component and get max failure probability
-    const componentRisks = {};
-    predictions.forEach(p => {
-      if (p.component && p.failure_probability) {
-        const component = p.component;
-        componentRisks[component] = Math.max(
-          componentRisks[component] || 0,
-          p.failure_probability
-        );
-      }
-    });
+// --- CHART RENDERERS ---
 
-    // If no data, show sample data
-    if (Object.keys(componentRisks).length === 0) {
-      componentRisks['Engine'] = 45;
-      componentRisks['Brakes'] = 30;
-      componentRisks['Transmission'] = 25;
+function renderFleetHealthTrend(score) {
+  const ctx = document.getElementById('healthTrendChart').getContext('2d');
+  let currentScore = score || 85;
+  if (currentScore <= 1 && currentScore > 0) currentScore *= 100;
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+  gradient.addColorStop(0, 'rgba(108, 99, 255, 0.4)');
+  gradient.addColorStop(1, 'rgba(108, 99, 255, 0.0)');
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      datasets: [{
+        label: 'Fleet Health',
+        data: [currentScore - 5, currentScore - 3, currentScore - 4, currentScore - 2, currentScore - 1, currentScore],
+        borderColor: '#6c63ff',
+        borderWidth: 3,
+        backgroundColor: gradient,
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: false, min: 0, max: 100 }, x: { display: false } }
     }
-
-    new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: Object.keys(componentRisks),
-        datasets: [{
-          label: 'Max Failure Probability (%)',
-          data: Object.values(componentRisks),
-          backgroundColor: '#6c63ff',
-          borderRadius: 4
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, max: 100 } }
-      }
-    });
-  } catch (error) {
-    console.error('Error rendering component failures:', error);
-  }
+  });
+  document.getElementById('healthTrendChart').closest('.chart-card').style.display = 'block';
 }
 
-function renderServiceWorkload(data) {
-  try {
-    const ctx = document.getElementById('serviceWorkloadChart').getContext('2d');
-    const scheduling = data.scheduling || {};
-    const centers = scheduling.service_centers || [];
-
-    // If no data, show sample
-    const labels = centers.length > 0
-      ? centers.map(c => c.name.replace(' Service Center', ''))
-      : ['Mumbai', 'Delhi', 'Bangalore'];
-
-    const workloadData = centers.length > 0
-      ? centers.map(c => Math.round((c.appointments_today / c.capacity) * 100))
-      : [60, 80, 45];
-
-    new Chart(ctx, {
-      type: 'bar',
-      indexAxis: 'y',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Utilization (%)',
-          data: workloadData,
-          backgroundColor: '#a29bfe',
-          borderRadius: 4
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { x: { beginAtZero: true, max: 100 } }
-      }
-    });
-  } catch (error) {
-    console.error('Error rendering service workload:', error);
-  }
-}
-
-function renderEngagementChannels(data) {
-  try {
-    const ctx = document.getElementById('engagementChannelChart').getContext('2d');
-    const engagement = data.engagement || {};
-    const methods = engagement.communication_methods || {};
-
-    // If no data, show sample
-    const labels = Object.keys(methods).length > 0
-      ? Object.keys(methods).map(k => k.replace(/_/g, ' ').toUpperCase())
-      : ['SMS', 'EMAIL', 'APP', 'CALL'];
-
-    const methodData = Object.keys(methods).length > 0
-      ? Object.values(methods)
-      : [45, 30, 20, 5];
-
-    new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Engagements',
-          data: methodData,
-          backgroundColor: ['#6c63ff', '#00b894', '#fdcb6e', '#ff7675'],
-          borderRadius: 4
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } }
-      }
-    });
-  } catch (error) {
-    console.error('Error rendering engagement channels:', error);
-  }
-}
-
-// ============================================================================
-// RENDER MAIN MAINTENANCE TABLE (STEP 8)
-// ============================================================================
-function renderMaintenanceTable(data) {
-  const tableBody = document.querySelector('#maintenance-table tbody');
-  const fleet = data.fleet || {};
-  const failures = data.failures || {};
-  const scheduling = data.scheduling || {};
-
-  const vehicles = fleet.vehicles || [];
-  const predictions = failures.predictions || [];
-  const appointments = scheduling.appointments || [];
-
-  // Merge data from 3 sources
-  const rows = vehicles.map(v => {
-    const vehicleId = v.vehicle_id || '';
-
-    // Match failure prediction (case-insensitive)
-    const pred = predictions.find(p =>
-      (p.vehicle_id || '').toLowerCase() === vehicleId.toLowerCase()
-    );
-
-    // Match appointment (case-insensitive)
-    const appt = appointments.find(a =>
-      (a.vehicle_id || '').toLowerCase() === vehicleId.toLowerCase()
-    );
-
-    // Determine segment (fallback logic)
-    const segment = vehicleId.includes('00') ? 'Light Duty' : 'Heavy Duty';
-
-    // Get priority with fallback
-    const priority = v.priority || (pred ? 'high' : 'low');
-
-    // Get risk with fallback
-    const risk = pred ? pred.failure_probability : (priority === 'critical' ? 85 : 15);
-
-    // Get scheduled date with fallback
-    const date = appt ? appt.scheduled_date : (v.maintenance ? v.maintenance : 'Pending');
-
-    // Get service center with fallback
-    const center = appt ? appt.service_center : 'TBD';
-
-    // Get hours with fallback
-    const hours = pred ? '4-6' : '2';
-
-    // Get cost with fallback
-    const cost = pred ? pred.cost_implications : 500;
-
-    return {
-      id: vehicleId,
-      segment: segment,
-      priority: priority.toLowerCase(),
-      risk: risk,
-      date: date,
-      center: center,
-      hours: hours,
-      cost: cost
-    };
+function renderPriorityDistribution(table) {
+  // Count occurrences in the Priority/Status column
+  const colName = table.headers.find(h => ['Priority', 'Status', 'Risk Level'].some(t => h.toLowerCase().includes(t.toLowerCase())));
+  const counts = {};
+  table.rows.forEach(row => {
+    const val = row[colName] || 'Unknown';
+    counts[val] = (counts[val] || 0) + 1;
   });
 
-  // Sort by risk descending
-  rows.sort((a, b) => b.risk - a.risk);
-
-  // Render table rows
-  tableBody.innerHTML = rows.map(row => `
-    <tr>
-      <td><strong>${row.id}</strong></td>
-      <td>${row.segment}</td>
-      <td><span class="badge badge-${row.priority}">${row.priority.toUpperCase()}</span></td>
-      <td>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <div style="flex: 1; height: 6px; background: #eee; border-radius: 3px; width: 60px;">
-            <div style="width: ${row.risk}%; height: 100%; background: ${getColorForRisk(row.risk)}; border-radius: 3px;"></div>
-          </div>
-          ${row.risk}%
-        </div>
-      </td>
-      <td>${row.date}</td>
-      <td>${row.center}</td>
-      <td>${row.hours}</td>
-      <td>$${typeof row.cost === 'number' ? row.cost.toLocaleString() : row.cost}</td>
-    </tr>
-  `).join('');
+  const ctx = document.getElementById('priorityDistChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(counts),
+      datasets: [{
+        data: Object.values(counts),
+        backgroundColor: ['#00b894', '#fdcb6e', '#fd9644', '#ff7675', '#6c63ff'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '70%',
+      plugins: { legend: { position: 'bottom', labels: { usePointStyle: true } } }
+    }
+  });
+  document.getElementById('priorityDistChart').closest('.chart-card').style.display = 'block';
 }
 
-function getColorForRisk(risk) {
-  if (risk >= 80) return '#ff7675'; // Red
-  if (risk >= 50) return '#fdcb6e'; // Orange
-  return '#00b894'; // Green
+function renderComponentFailures(table) {
+  // Extract Component (Label) and Probability (Value)
+  const labelCol = table.headers[0]; // Assume first column is component/vehicle
+  const valCol = table.headers.find(h => ['Probability', 'Risk', 'Score'].some(t => h.toLowerCase().includes(t.toLowerCase())));
+
+  const labels = [];
+  const data = [];
+
+  table.rows.forEach(row => {
+    labels.push(row[labelCol]);
+    let val = parseFloat((row[valCol] || '0').replace(/[^0-9.]/g, ''));
+    if (val <= 1 && val > 0) val *= 100;
+    data.push(val);
+  });
+
+  const ctx = document.getElementById('failureProbChart').getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+  gradient.addColorStop(0, '#6c63ff');
+  gradient.addColorStop(1, '#a29bfe');
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Risk (%)',
+        data: data,
+        backgroundColor: gradient,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, max: 100 }, x: { display: false } }
+    }
+  });
+  document.getElementById('failureProbChart').closest('.chart-card').style.display = 'block';
+}
+
+function renderServiceWorkload(table) {
+  const labelCol = table.headers[0];
+  const valCol = table.headers.find(h => ['Utilization', 'Workload'].some(t => h.toLowerCase().includes(t.toLowerCase())));
+
+  const labels = [];
+  const data = [];
+
+  table.rows.forEach(row => {
+    labels.push(row[labelCol]);
+    let val = parseFloat((row[valCol] || '0').replace(/[^0-9.]/g, ''));
+    if (val <= 1 && val > 0) val *= 100;
+    data.push(val);
+  });
+
+  const ctx = document.getElementById('serviceWorkloadChart').getContext('2d');
+  const gradient = ctx.createLinearGradient(400, 0, 0, 0);
+  gradient.addColorStop(0, '#00b894');
+  gradient.addColorStop(1, '#55efc4');
+
+  new Chart(ctx, {
+    type: 'bar',
+    indexAxis: 'y',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Utilization',
+        data: data,
+        backgroundColor: gradient,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true, max: 100 }, y: { display: false } }
+    }
+  });
+  document.getElementById('serviceWorkloadChart').closest('.chart-card').style.display = 'block';
+}
+
+function renderEngagementChannels(table) {
+  const labelCol = table.headers[0];
+  const valCol = table.headers.find(h => ['Count', 'Total', 'Contacts'].some(t => h.toLowerCase().includes(t.toLowerCase()))) || table.headers[1];
+
+  const labels = [];
+  const data = [];
+
+  table.rows.forEach(row => {
+    labels.push(row[labelCol]);
+    data.push(parseFloat((row[valCol] || '0').replace(/[^0-9.]/g, '')));
+  });
+
+  const ctx = document.getElementById('engagementChannelChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'polarArea',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: ['rgba(108, 99, 255, 0.7)', 'rgba(0, 184, 148, 0.7)', 'rgba(253, 203, 110, 0.7)', 'rgba(255, 118, 117, 0.7)'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { usePointStyle: true } } },
+      scales: { r: { ticks: { display: false } } }
+    }
+  });
+  document.getElementById('engagementChannelChart').closest('.chart-card').style.display = 'block';
 }
 
 // ============================================================================
-// STEP 9: FALLBACK RENDERING
+// RENDER RAW TABLES (WITH COLOR BADGES)
 // ============================================================================
-function fallbackRender(markdownText) {
-  console.warn('⚠️ Using fallback rendering mode');
+function renderRawTables(tables) {
+  const container = document.createElement('section');
+  container.className = 'raw-tables-section';
+  container.style.marginTop = '40px';
+  container.innerHTML = '<h3 style="color: #6c63ff; margin-bottom: 20px;">📄 Detailed Reports</h3>';
 
-  // Convert markdown to HTML for display
-  const html = marked.parse(markdownText);
+  tables.forEach(table => {
+    if (!hasData(table.rows)) return;
+    const tableDiv = document.createElement('div');
+    tableDiv.className = 'table-container';
+    tableDiv.style.marginBottom = '30px';
+    const title = table.context ? table.context.toUpperCase() : `TABLE ${table.index + 1}`;
 
-  // Show in table section
-  const tableSection = document.querySelector('.table-section .table-container');
-  if (tableSection) {
-    tableSection.innerHTML = `
-      <div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px;">
-        <h3 style="color: #6c63ff; margin-bottom: 16px;">📄 Report Data</h3>
-        <div style="max-height: 600px; overflow-y: auto;">
-          ${html}
-        </div>
-      </div>
+    let html = `
+      <h4 style="color: #636e72; margin-bottom: 10px; font-size: 14px; border-left: 4px solid #a29bfe; padding-left: 10px;">${title}</h4>
+      <table>
+        <thead><tr>${table.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+        <tbody>
     `;
+
+    table.rows.forEach(row => {
+      html += '<tr>';
+      table.headers.forEach(h => {
+        const cellData = row[h] || '';
+        html += `<td>${formatCellWithBadge(cellData)}</td>`;
+      });
+      html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+    tableDiv.innerHTML = html;
+    container.appendChild(tableDiv);
+  });
+
+  // Replace the old table section if it exists, or append
+  const existing = document.querySelector('.raw-tables-section');
+  if (existing) existing.remove();
+
+  // Also hide the old hardcoded maintenance table if we have raw tables
+  const oldTable = document.querySelector('.table-section');
+  if (oldTable) oldTable.style.display = 'none';
+
+  document.querySelector('.dashboard-container').appendChild(container);
+}
+
+// Helper to add badges to cell content
+function formatCellWithBadge(text) {
+  const lower = text.toLowerCase();
+
+  if (['critical', 'fail', 'high', 'severe'].some(k => lower.includes(k))) {
+    return `<span class="badge badge-critical">${text}</span>`;
+  }
+  if (['warning', 'medium', 'moderate'].some(k => lower.includes(k))) {
+    return `<span class="badge badge-medium">${text}</span>`;
+  }
+  if (['healthy', 'pass', 'good', 'normal', 'low', 'optimal'].some(k => lower.includes(k))) {
+    return `<span class="badge badge-low">${text}</span>`;
   }
 
-  // Keep KPI cards as skeleton
-  console.log('Charts not rendered - using fallback mode');
+  return text;
 }
 
 function showErrorState() {
   const kpiContainer = document.getElementById('kpi-container');
-  kpiContainer.innerHTML = `
-    <div style="grid-column: 1 / -1; padding: 40px; text-align: center; color: #ff7675;">
-      <h3>⚠️ Unable to load dashboard data</h3>
-      <p>Please check your backend connection and try again.</p>
-    </div>
-  `;
+  if (kpiContainer) {
+    kpiContainer.innerHTML = `
+      <div style="grid-column: 1 / -1; padding: 40px; text-align: center; color: #ff7675;">
+        <h3>⚠️ Unable to load dashboard data</h3>
+        <p>Please check your backend connection and try again.</p>
+      </div>
+    `;
+  }
 }

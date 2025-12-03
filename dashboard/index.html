@@ -1,73 +1,120 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CrewAI Predictive Maintenance Report</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+  <title>CareCrew - Automotive Predictive Maintenance Platform</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <!-- Markdown parsing and HTML manipulation libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cheerio@1.0.0-rc.12/dist/browser/cheerio.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
-  <div id="particles-js"></div>
-  <div class="cyber-grid"></div>
-  <div class="glow-orb orb1"></div>
-  <div class="glow-orb orb2"></div>
-  <div class="glow-orb orb3"></div>
-  <div class="scan-line"></div>
-
-  <div class="container">
-    <div class="header">
-      <div class="tech-badge">◢ Predictive Maintenance System ◣</div>
-      <h1>CrewAI Fleet Intelligence</h1>
-      <p class="subtitle">Q4 2025 • India Operations</p>
-    </div>
-
-    <div class="stats-grid">
-      <div class="stat-box">
-        <div class="stat-label">◢ System Status</div>
-        <div class="stat-value">Active</div>
+  <div class="dashboard-container">
+    <!-- Header -->
+    <header class="top-bar">
+      <div class="logo-section">
+        <div class="logo-icon"></div>
+        <h1>CareCrew <span class="subtitle">Automotive Predictive Maintenance Platform</span></h1>
       </div>
-      <div class="stat-box">
-        <div class="stat-label">◢ Data Points</div>
-        <div class="stat-value">12.4K</div>
+      <div class="header-controls">
+        <div class="date-range">
+          <span>Data Last Updated: <span id="last-updated-date">--/--/----</span></span>
+        </div>
       </div>
-      <div class="stat-box">
-        <div class="stat-label">◢ Accuracy Rate</div>
-        <div class="stat-value">98.7%</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">◢ Last Sync</div>
-        <div class="stat-value" id="sync-time">--:--</div>
-      </div>
-    </div>
+    </header>
 
-    <div class="glass-card">
-      <div class="corner-accent top-left"></div>
-      <div class="corner-accent top-right"></div>
-      <div class="corner-accent bottom-left"></div>
-      <div class="corner-accent bottom-right"></div>
+    <!-- KPI Cards Row -->
+    <section class="kpi-grid" id="kpi-container">
+      <!-- KPIs will be injected here by JS -->
+      <div class="kpi-card skeleton"></div>
+      <div class="kpi-card skeleton"></div>
+      <div class="kpi-card skeleton"></div>
+      <div class="kpi-card skeleton"></div>
+      <div class="kpi-card skeleton"></div>
+    </section>
 
-      <div class="report-header">
-        <div class="report-title">◢ COMPREHENSIVE ANALYSIS REPORT</div>
-        <div class="status-indicator">
-          <div class="live-badge">
-            <div class="live-dot"></div>
-            LIVE
-          </div>
-          <div class="timestamp" id="report-timestamp">Loading...</div>
+    <!-- Charts Grid -->
+    <section class="charts-grid">
+      <!-- Row 1 -->
+      <div class="chart-card wide">
+        <div class="card-header">
+          <h3>Fleet Health Score Trend</h3>
+          <span class="trend-badge positive">↑ 4.2%</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="healthTrendChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header">
+          <h3>Vehicle Maintenance Priority Distribution</h3>
+        </div>
+        <div class="chart-container donut-container">
+          <canvas id="priorityDistChart"></canvas>
         </div>
       </div>
 
-      <div id="report-container" class="scrollable-report">
-        <div class="loading-container">
-          <div class="cyber-spinner"></div>
-          <div class="loading-text">◢ Initializing System ◣</div>
+      <!-- Row 2 -->
+      <div class="chart-card">
+        <div class="card-header">
+          <h3>Component Failure Probabilities</h3>
+        </div>
+        <div class="chart-container">
+          <canvas id="failureProbChart"></canvas>
         </div>
       </div>
-    </div>
+      <div class="chart-card">
+        <div class="card-header">
+          <h3>Service Center Workload</h3>
+        </div>
+        <div class="chart-container">
+          <canvas id="serviceWorkloadChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header">
+          <h3>Customer Engagement by Channel</h3>
+        </div>
+        <div class="chart-container">
+          <canvas id="engagementChannelChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Data Table Section -->
+    <section class="table-section">
+      <div class="section-header">
+        <h3>Fleet Maintenance Schedule and Predictive Alerts</h3>
+      </div>
+      <div class="table-container">
+        <table id="maintenance-table">
+          <thead>
+            <tr>
+              <th>Vehicle ID</th>
+              <th>Segment</th>
+              <th>Priority</th>
+              <th>Failure Risk (%)</th>
+              <th>Scheduled Service</th>
+              <th>Service Center</th>
+              <th>Est. Hours</th>
+              <th>Cost Est. ($)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Rows injected by JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
   <script src="script.js"></script>
 </body>
+
 </html>

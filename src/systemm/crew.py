@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 
 from crewai import LLM
 from crewai import Agent, Crew, Process, Task
@@ -10,19 +11,53 @@ from systemm.tools.customer_notification_api import CustomerNotificationAPI
 from systemm.tools.service_center_api import ServiceCenterAPI
 from systemm.tools.iternio_route_optimizer import IternioRouteOptimizer
 
+# Load environment variables from .env file
+load_dotenv()
+
 @CrewBase
 class AutomotivePredictiveMaintenanceAiSystemCrew:
     """AutomotivePredictiveMaintenanceAiSystem crew"""
 
-    llm_models = {
-    "data_analysis_agent": "perplexity/sonar-pro",
-    "diagnosis_agent": "perplexity/sonar-pro",
-    "customer_engagement_agent": "perplexity/sonar-pro",
-    "scheduling_agent": "perplexity/sonar-pro",
-    "feedback_agent": "perplexity/sonar-pro",
-    "manufacturing_quality_insights_agent": "perplexity/sonar-pro",
-    "master_orchestrator_agent": "perplexity/sonar-pro",
-}
+    # Get LLM provider from environment (default: perplexity)
+    llm_provider = os.getenv("LLM_PROVIDER", "perplexity").lower()
+    
+    # Define models based on provider (3-tier priority)
+    if llm_provider == "perplexity":
+        # Perplexity API - 1st choice (recommended)
+        # Real-time web search, powerful models, fast inference
+        llm_models = {
+            "data_analysis_agent": "perplexity/sonar-pro",
+            "diagnosis_agent": "perplexity/sonar-pro",
+            "customer_engagement_agent": "perplexity/sonar-pro",
+            "scheduling_agent": "perplexity/sonar-pro",
+            "feedback_agent": "perplexity/sonar-pro",
+            "manufacturing_quality_insights_agent": "perplexity/sonar-pro",
+            "master_orchestrator_agent": "perplexity/sonar-pro",
+        }
+    elif llm_provider == "cerebras":
+        # Cerebras API - 2nd choice (free tier)
+        # Fast inference, no GPU required
+        llm_models = {
+            "data_analysis_agent": "cerebras/llama3.1-8b",
+            "diagnosis_agent": "cerebras/llama3.1-8b",
+            "customer_engagement_agent": "cerebras/llama3.1-8b",
+            "scheduling_agent": "cerebras/llama3.1-8b",
+            "feedback_agent": "cerebras/llama3.1-8b",
+            "manufacturing_quality_insights_agent": "cerebras/llama3.1-8b",
+            "master_orchestrator_agent": "cerebras/llama3.1-8b",
+        }
+    else:
+        # Ollama - 3rd choice (local backup)
+        # Fully private, offline capable
+        llm_models = {
+            "data_analysis_agent": "ollama/mistral:latest",
+            "diagnosis_agent": "ollama/mistral:latest",
+            "customer_engagement_agent": "ollama/mistral:latest",
+            "scheduling_agent": "ollama/mistral:latest",
+            "feedback_agent": "ollama/mistral:latest",
+            "manufacturing_quality_insights_agent": "ollama/mistral:latest",
+            "master_orchestrator_agent": "ollama/mistral:latest",
+        }
     # Rest of your code remains unchanged
 
 
@@ -95,9 +130,13 @@ class AutomotivePredictiveMaintenanceAiSystemCrew:
             max_reasoning_attempts=None,
             inject_date=True,
             allow_delegation=False,
-            max_iter=25,
+            max_iter=10,
             max_rpm=None,
             max_execution_time=None,
+            max_input_tokens=3000,       # <---- CRITICAL FIX
+            max_output_tokens=800,       # <---- CRITICAL FIX
+            max_reasoning_tokens=0,      # remove chain-of-thought overhead
+            max_total_tokens=3800,
             llm=LLM(model=self.llm_models["feedback_agent"], temperature=0.7),
         )
 

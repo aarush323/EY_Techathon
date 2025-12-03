@@ -1,12 +1,15 @@
 
 import sys
 import os
-from systemm.crew import AutomotivePredictiveMaintenanceAiSystemCrew
-from datetime import datetime
+import json
 
-# Set Perplexity API key if not already set
-if not os.getenv("PERPLEXITY_API_KEY"):
-    os.environ["PERPLEXITY_API_KEY"] = "key"
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+SRC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+sys.path.append(ROOT_DIR)
+sys.path.append(SRC_DIR)
+from src.systemm.crew import AutomotivePredictiveMaintenanceAiSystemCrew
+from datetime import datetime
 
 # This main file is intended to run your crew locally
 # Replace with inputs you want to test with, it will automatically

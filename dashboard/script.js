@@ -246,6 +246,7 @@ function processFleetTable(rows) {
     vehicle_id: findValue(row, ['vehicle', 'id', 'vehicle id']),
     status: findValue(row, ['status', 'health', 'condition']),
     priority: findValue(row, ['priority', 'severity', 'level']),
+    segment: findValue(row, ['segment', 'vehicle type', 'class']),
     sensor_status: findValue(row, ['sensor', 'sensors']),
     maintenance: findValue(row, ['maintenance', 'next service'])
   }));
@@ -373,6 +374,105 @@ function parseIntSafe(value) {
   return isNaN(num) ? 0 : num;
 }
 
+function getScheduledStatus(priority) {
+  const key = (priority || '').toLowerCase();
+  if (key === 'critical') return 'Ongoing';
+  if (key === 'high' || key === 'medium') return 'Pending';
+  if (key === 'low') return 'Completed';
+  return 'Pending';
+}
+
+function getStatusBadgeClass(status) {
+  return `badge-status-${(status || '').toLowerCase()}`;
+}
+
+function inferSegment(segment, vehicleId = '') {
+  if (segment) return segment;
+  const normalized = (vehicleId || '').toLowerCase();
+  if (normalized.includes('heavy')) return 'Heavy Duty';
+  const numericId = parseInt(normalized.replace(/[^0-9]/g, ''), 10);
+  if (!isNaN(numericId) && numericId >= 9) {
+    return 'Heavy Duty';
+  }
+  return 'Light Duty';
+}
+
+const PRIORITY_BASE_HOURS = {
+  critical: 6,
+  high: 4.5,
+  medium: 3,
+  low: 1.5
+};
+
+const SEGMENT_MULTIPLIERS = {
+  light: 1,
+  'light duty': 1,
+  heavy: 1.5,
+  'heavy duty': 1.5
+};
+
+const HOURLY_RATES = {
+  light: 125,
+  'light duty': 125,
+  heavy: 200,
+  'heavy duty': 200
+};
+
+function estimateHoursAndCost(segment, priority, vehicleId) {
+  const normalizedPriority = (priority || '').toLowerCase();
+  const baseHours = PRIORITY_BASE_HOURS[normalizedPriority] || 1;
+  const segmentKey = getSegmentKey(segment);
+  const multiplier = SEGMENT_MULTIPLIERS[segmentKey] || 1;
+  const hourlyRate = HOURLY_RATES[segmentKey] || 125;
+  const vehicleCount = countVehiclesFromId(vehicleId);
+
+  const hoursPerVehicle = Math.max(1, Math.round(baseHours * multiplier));
+  const totalHours = Math.max(1, hoursPerVehicle * vehicleCount);
+  const totalCost = Math.max(125, roundToNearest(totalHours * hourlyRate, 25));
+
+  return { hours: totalHours, cost: totalCost };
+}
+
+function getSegmentKey(segment) {
+  const key = (segment || '').toLowerCase();
+  if (SEGMENT_MULTIPLIERS[key]) return key;
+  if (key.includes('heavy')) return 'heavy';
+  return 'light';
+}
+
+function countVehiclesFromId(vehicleId) {
+  if (!vehicleId || typeof vehicleId !== 'string') return 1;
+  const cleaned = vehicleId.replace(/and/gi, ',');
+  const parts = cleaned.split(/[,/&]+/).map(p => p.trim()).filter(Boolean);
+  if (parts.length === 0) return 1;
+
+  let count = 0;
+  parts.forEach(part => {
+    const normalized = part.replace(/\s+/g, '');
+    const rangeMatch = normalized.match(/^([a-zA-Z]+)(\d+)\-([a-zA-Z]+)?(\d+)$/);
+    if (rangeMatch) {
+      const start = parseInt(rangeMatch[2], 10);
+      const end = parseInt(rangeMatch[4], 10);
+      if (!isNaN(start) && !isNaN(end) && end >= start) {
+        count += (end - start + 1);
+        return;
+      }
+    }
+    count += 1;
+  });
+
+  return Math.max(1, count);
+}
+
+function roundToNearest(value, increment) {
+  return Math.round(value / increment) * increment;
+}
+
+function formatCurrency(value) {
+  if (typeof value !== 'number' || isNaN(value)) return value || '0';
+  return value.toLocaleString();
+}
+
 // ============================================================================
 // STEP 7-8: RENDER DASHBOARD
 // ============================================================================
@@ -470,41 +570,155 @@ function renderCharts(data) {
 
 function renderFleetHealthTrend(data) {
   try {
-    const ctx = document.getElementById('healthTrendChart').getContext('2d');
-    const kpis = data.kpis || {};
-    const currentScore = kpis.fleetHealthScore || kpis.fleet_health_score || 85;
+    // ---------- Polished Fleet Health Chart ----------
 
-    // Simulate 6 months trend
-    const trendData = [
-      currentScore - 5,
-      currentScore - 3,
-      currentScore - 4,
-      currentScore - 2,
-      currentScore - 1,
-      currentScore
-    ];
+    // --- Configurable inputs ---
     const labels = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const values = [65, 68, 72, 78, 84, 90];
+    const targetValue = 85; // horizontal target/goal value
 
-    new Chart(ctx, {
+    // --- Helpers ---
+    function rollingAverage(arr, n = 3) {
+      return arr.map((_, i) => {
+        const window = arr.slice(Math.max(0, i - n + 1), i + 1);
+        return Math.round((window.reduce((s, x) => s + x, 0) / window.length) * 10) / 10;
+      });
+    }
+
+    function pctChange(oldVal, newVal) {
+      return oldVal === 0 ? null : ((newVal - oldVal) / oldVal) * 100;
+    }
+
+    // --- DOM ---
+    const canvas = document.getElementById('healthTrendChart');
+    if (!canvas) {
+      console.warn('healthTrendChart not found');
+      return;
+    }
+    if (!canvas.parentElement.style.height) {
+      canvas.parentElement.style.minHeight = '320px';
+    }
+    const ctx = canvas.getContext('2d');
+
+    // --- Gradient creator (vertical) ---
+    function createGradient(ctx, topColor, bottomColor) {
+      const h = ctx.canvas.height || 320;
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, topColor);
+      g.addColorStop(1, bottomColor);
+      return g;
+    }
+
+    // --- Derived datasets ---
+    const rolling = rollingAverage(values, 3);
+
+    // --- Chart config ---
+    const config = {
       type: 'line',
       data: {
-        labels: labels,
-        datasets: [{
-          label: 'Fleet Health Score',
-          data: trendData,
-          borderColor: '#6c63ff',
-          backgroundColor: 'rgba(108, 99, 255, 0.2)',
-          fill: true,
-          tension: 0.4
-        }]
+        labels,
+        datasets: [
+          {
+            label: 'Fleet Health Score',
+            data: values,
+            fill: true,
+            backgroundColor: (ctx) => createGradient(ctx.chart.ctx, 'rgba(99,102,241,0.18)', 'rgba(99,102,241,0.04)'),
+            borderColor: 'rgba(99,102,241,1)',
+            borderWidth: 2.8,
+            tension: 0.28,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: '#ffffff',
+            pointBorderColor: 'rgba(99,102,241,1)',
+            pointBorderWidth: 2
+          },
+          {
+            label: '3-month average',
+            data: rolling,
+            borderColor: 'rgba(16,185,129,0.9)',
+            borderWidth: 1.6,
+            tension: 0.28,
+            pointRadius: 0,
+            borderDash: [6, 4],
+            fill: false
+          }
+        ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: false, min: 60, max: 100 } }
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            callbacks: {
+              title: (items) => (items[0] ? items[0].label : ''),
+              label: (ctx) => `${ctx.dataset.label || 'Value'}: ${ctx.parsed.y}%`
+            }
+          },
+          annotation: {
+            annotations: {
+              targetLine: {
+                type: 'line',
+                yMin: targetValue,
+                yMax: targetValue,
+                borderColor: 'rgba(16,185,129,0.95)',
+                borderWidth: 2,
+                borderDash: [4, 4],
+                label: {
+                  enabled: true,
+                  content: `Target (${targetValue})`,
+                  position: 'end',
+                  backgroundColor: 'rgba(16,185,129,0.95)',
+                  color: '#fff',
+                  padding: 6
+                }
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            min: 50,
+            max: 100,
+            ticks: { stepSize: 10 },
+            grid: { color: 'rgba(0,0,0,0.04)' }
+          },
+          x: { grid: { color: 'rgba(0,0,0,0.02)' } }
+        },
+        animation: { duration: 600, easing: 'easeOutQuart' }
       }
-    });
+    };
+
+    // destroy previous Chart instance if exists (handy during dev/hot reload)
+    if (window._fleetHealthChart instanceof Chart) {
+      window._fleetHealthChart.destroy();
+    }
+    window._fleetHealthChart = new Chart(ctx, config);
+
+    // --- Update callout (e.g., "+7.1% vs Nov") if element exists ---
+    const deltaEl = document.getElementById('health-trend-delta');
+    const lastIdx = values.length - 1;
+    const change = pctChange(values[lastIdx - 1], values[lastIdx]);
+    if (deltaEl && typeof change === 'number') {
+      const sign = change >= 0 ? '+' : '';
+      deltaEl.textContent = `${sign}${change.toFixed(1)}% vs ${labels[lastIdx - 1]}`;
+      deltaEl.style.color = change >= 0 ? '#16a34a' : '#ef4444';
+    }
+
+    // --- Optional: add export button hookup (if there is a button with id 'exportChartBtn') ---
+    const exportBtn = document.getElementById('exportChartBtn');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', () => {
+        if (!window._fleetHealthChart) return;
+        const a = document.createElement('a');
+        a.href = window._fleetHealthChart.toBase64Image();
+        a.download = 'fleet-health-chart.png';
+        a.click();
+      });
+    }
   } catch (error) {
     console.error('Error rendering fleet health trend:', error);
   }
@@ -689,36 +903,32 @@ function renderMaintenanceTable(data) {
       (a.vehicle_id || '').toLowerCase() === vehicleId.toLowerCase()
     );
 
-    // Determine segment (fallback logic)
-    const segment = vehicleId.includes('00') ? 'Light Duty' : 'Heavy Duty';
+    // Determine segment (with fallback)
+    const segment = inferSegment(v.segment, vehicleId);
 
     // Get priority with fallback
-    const priority = v.priority || (pred ? 'high' : 'low');
+    const priorityRaw = v.priority || (pred ? 'high' : 'low');
+    const priority = (priorityRaw || '').toLowerCase();
 
     // Get risk with fallback
     const risk = pred ? pred.failure_probability : (priority === 'critical' ? 85 : 15);
 
-    // Get scheduled date with fallback
-    const date = appt ? appt.scheduled_date : (v.maintenance ? v.maintenance : 'Pending');
-
     // Get service center with fallback
     const center = appt ? appt.service_center : 'TBD';
 
-    // Get hours with fallback
-    const hours = pred ? '4-6' : '2';
-
-    // Get cost with fallback
-    const cost = pred ? pred.cost_implications : 500;
+    const status = getScheduledStatus(priority);
+    const { hours, cost } = estimateHoursAndCost(segment, priority, vehicleId);
 
     return {
       id: vehicleId,
       segment: segment,
-      priority: priority.toLowerCase(),
+      priority: priority,
+      priorityLabel: priorityRaw,
       risk: risk,
-      date: date,
       center: center,
       hours: hours,
-      cost: cost
+      cost: cost,
+      status: status
     };
   });
 
@@ -726,11 +936,17 @@ function renderMaintenanceTable(data) {
   rows.sort((a, b) => b.risk - a.risk);
 
   // Render table rows
-  tableBody.innerHTML = rows.map(row => `
+  let totalCost = 0;
+  const tableMarkup = rows.map(row => {
+    if (typeof row.cost === 'number') {
+      totalCost += row.cost;
+    }
+    const statusClass = getStatusBadgeClass(row.status);
+    return `
     <tr>
       <td><strong>${row.id}</strong></td>
       <td>${row.segment}</td>
-      <td><span class="badge badge-${row.priority}">${row.priority.toUpperCase()}</span></td>
+      <td><span class="badge badge-${row.priority}">${(row.priorityLabel || row.priority).toUpperCase()}</span></td>
       <td>
         <div style="display: flex; align-items: center; gap: 8px;">
           <div style="flex: 1; height: 6px; background: #eee; border-radius: 3px; width: 60px;">
@@ -739,12 +955,20 @@ function renderMaintenanceTable(data) {
           ${row.risk}%
         </div>
       </td>
-      <td>${row.date}</td>
+      <td><span class="badge ${statusClass}">${row.status}</span></td>
       <td>${row.center}</td>
       <td>${row.hours}</td>
-      <td>$${typeof row.cost === 'number' ? row.cost.toLocaleString() : row.cost}</td>
+      <td>$${formatCurrency(row.cost)}</td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
+
+  tableBody.innerHTML = tableMarkup;
+
+  const totalElement = document.getElementById('total-immediate-cost');
+  if (totalElement) {
+    totalElement.textContent = `TOTAL IMMEDIATE COSTS: $${formatCurrency(totalCost)}`;
+  }
 }
 
 function getColorForRisk(risk) {

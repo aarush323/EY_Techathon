@@ -160,7 +160,8 @@ body {
   flex: 1;
   position: relative;
   width: 100%;
-  height: 100%;
+  min-height: 320px;
+  height: 320px;
 }
 
 .donut-container {
@@ -219,6 +220,13 @@ tbody tr:hover {
   background-color: #f8f9fa;
 }
 
+.table-total {
+  margin-top: 16px;
+  text-align: right;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
 /* Badges */
 .badge {
   padding: 4px 10px;
@@ -245,6 +253,21 @@ tbody tr:hover {
 .badge-low {
   background: #e6fffa;
   color: #00b894;
+}
+
+.badge-status-completed {
+  background: #e6fffa;
+  color: #00916d;
+}
+
+.badge-status-pending {
+  background: #fff4e0;
+  color: #c97b00;
+}
+
+.badge-status-ongoing {
+  background: #e3f2ff;
+  color: #0b74c7;
 }
 
 /* Responsive */

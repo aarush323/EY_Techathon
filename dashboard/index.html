@@ -12,6 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/cheerio@1.0.0-rc.12/dist/browser/cheerio.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0"></script>
 </head>
 
 <body>
@@ -45,7 +46,7 @@
       <div class="chart-card wide">
         <div class="card-header">
           <h3>Fleet Health Score Trend</h3>
-          <span class="trend-badge positive">↑ 4.2%</span>
+          <span id="health-trend-delta" class="trend-badge positive">--</span>
         </div>
         <div class="chart-container">
           <canvas id="healthTrendChart"></canvas>
@@ -110,6 +111,9 @@
             <!-- Rows injected by JS -->
           </tbody>
         </table>
+      </div>
+      <div class="table-total" id="total-immediate-cost">
+        TOTAL IMMEDIATE COSTS: --
       </div>
     </section>
   </div>

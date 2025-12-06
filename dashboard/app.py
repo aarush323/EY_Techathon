@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify
 from flask_cors import CORS
 import json
 import os
@@ -23,15 +23,11 @@ def load_json_file(path):
 
 @app.route('/')
 def index():
-    return send_from_directory(current_dir, 'index.html')
-
-@app.route('/styles.css')
-def styles():
-    return send_from_directory(current_dir, 'styles.css')
-
-@app.route('/script.js')
-def script():
-    return send_from_directory(current_dir, 'script.js')
+    return jsonify({
+        'status': 'online',
+        'message': 'CareCrew Backend API is running. Access endpoints at /api/dashboard',
+        'frontend': 'http://localhost:5173'
+    })
 
 @app.route('/api/dashboard')
 def get_dashboard_data():

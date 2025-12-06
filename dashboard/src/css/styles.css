@@ -1,0 +1,25 @@
+/* Global Styles for CareCrew Dashboard */
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #f9fafb;
+}
+
+/* Skeleton loader animation */
+.skeleton {
+  background: linear-gradient(110deg, #ececec 8%, #f5f5f5 18%, #ececec 33%);
+  background-size: 200% 100%;
+  animation: 1.5s shine linear infinite;
+}
+
+@keyframes shine {
+  to {
+    background-position-x: -200%;
+  }
+}
+
+/* Chart containers */
+.chart-container {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}

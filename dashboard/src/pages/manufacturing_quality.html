@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareCrew - Manufacturing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-900 antialiased">
+
+    <!-- Navbar -->
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <span class="font-bold text-xl tracking-tight text-gray-900">CareCrew</span>
+                    </div>
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-4 overflow-x-auto">
+                        <a href="/"
+                            class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200">Overview</a>
+                        <a href="/fleet_health"
+                            class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200">Fleet
+                            Health</a>
+                        <a href="/failure_predictions"
+                            class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200">Predictions</a>
+                        <a href="/customer_engagement"
+                            class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200">Engagement</a>
+                        <a href="/service_scheduling"
+                            class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200">Scheduling</a>
+                        <a href="/service_quality"
+                            class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200">Quality</a>
+                        <a href="/manufacturing_quality"
+                            class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200">Manufacturing</a>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <div class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                        Updated: <span id="last-updated-date" class="font-medium text-gray-900">--/--/----</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-2xl font-bold text-gray-900">Manufacturing Quality Insights</h1>
+            <p class="mt-1 text-sm text-gray-500">Defects, supplier issues, and design improvement recommendations.</p>
+        </div>
+
+        <!-- Manufacturing Insights Container -->
+        <section id="manufacturing-insights-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 animate-pulse">
+                <div class="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
+                <div class="space-y-2">
+                    <div class="h-4 bg-gray-100 rounded w-3/4"></div>
+                    <div class="h-4 bg-gray-100 rounded w-5/6"></div>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 animate-pulse">
+                <div class="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
+                <div class="space-y-2">
+                    <div class="h-4 bg-gray-100 rounded w-3/4"></div>
+                    <div class="h-4 bg-gray-100 rounded w-5/6"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="/js/script.js"></script>
+</body>
+
+</html>

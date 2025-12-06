@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 from flask import Flask, jsonify, send_from_directory
-from flask_cors import CORS
 import json
 import os
 from datetime import datetime
 
 # Current folder (dashboard/) for serving static files
 current_dir = os.path.dirname(os.path.abspath(__file__))
-app = Flask(__name__, static_folder=current_dir)
-CORS(app)
+src_dir = os.path.join(current_dir, 'src')
+app = Flask(__name__, static_folder=src_dir)
 
-# Path to the report in src/system/
-PROJECT_ROOT = os.path.dirname(current_dir)
-REPORT_FILE = os.path.join(PROJECT_ROOT, 'src', 'systemm', 'crew_report.json')
+# Path to the report in src/systemm/
+REPORT_FILE = os.path.join(src_dir, 'systemm', 'crew_report.json')
 
 def load_json_file(path):
     try:
@@ -21,18 +19,28 @@ def load_json_file(path):
     except FileNotFoundError:
         return {}
 
+# Serve HTML pages
 @app.route('/')
 def index():
-    return send_from_directory(current_dir, 'index.html')
+    return send_from_directory(os.path.join(src_dir, 'pages'), 'index.html')
 
-@app.route('/styles.css')
-def styles():
-    return send_from_directory(current_dir, 'styles.css')
+@app.route('/<page_name>')
+def serve_page(page_name):
+    # Handle both /page and /page.html
+    if not page_name.endswith('.html'):
+        page_name += '.html'
+    return send_from_directory(os.path.join(src_dir, 'pages'), page_name)
 
-@app.route('/script.js')
-def script():
-    return send_from_directory(current_dir, 'script.js')
+# Serve static assets (JS, CSS)
+@app.route('/js/<path:filename>')
+def serve_js(filename):
+    return send_from_directory(os.path.join(src_dir, 'js'), filename)
 
+@app.route('/css/<path:filename>')
+def serve_css(filename):
+    return send_from_directory(os.path.join(src_dir, 'css'), filename)
+
+# API routes
 @app.route('/api/dashboard')
 def get_dashboard_data():
     report = load_json_file(REPORT_FILE)

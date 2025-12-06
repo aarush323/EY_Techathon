@@ -87,7 +87,11 @@ function extractAllMarkdownSections(doc) {
 // ============================================================================
 function routePageRendering(data, timestamp) {
   const path = window.location.pathname;
-  const page = path.split("/").pop();
+  let page = path.split("/").pop();
+
+  // Normalize: handle both /page and /page.html
+  if (!page || page === '/') page = 'index.html';
+  if (!page.endsWith('.html')) page += '.html';
 
   const dateEl = document.getElementById('last-updated-date');
   if (dateEl && timestamp) {
@@ -97,7 +101,12 @@ function routePageRendering(data, timestamp) {
   // Navbar Active State
   document.querySelectorAll('nav a').forEach(link => {
     const href = link.getAttribute('href');
-    if (href === page || (page === '' && href === 'index.html')) {
+    const linkPage = href.split('/').pop();
+
+    // Match both /page and /page.html or index
+    if (linkPage === page ||
+      (page === 'index.html' && (href === '/' || linkPage === 'index.html')) ||
+      linkPage.replace('.html', '') === page.replace('.html', '')) {
       link.classList.add('border-black', 'text-gray-900');
       link.classList.remove('border-transparent', 'text-gray-500');
     } else {
@@ -106,7 +115,8 @@ function routePageRendering(data, timestamp) {
     }
   });
 
-  if (page === 'index.html' || page === '' || page === '/') {
+  // Route to appropriate renderer
+  if (page === 'index.html') {
     renderOverviewPage(data);
   } else if (page === 'fleet_health.html') {
     renderFleetHealthPage(data);
@@ -610,119 +620,215 @@ function renderEngagementChannels(data) {
 
 function extractAllTables(doc) {
   const tables = [];
-  doc.querySelectorAll("table").forEach((table) => {
-    const headers = Array.from(table.querySelectorAll("th")).map(th => th.textContent.trim());
-    const rows = Array.from(table.querySelectorAll("tr")).slice(1).map(tr => {
+  doc.querySelectorAll("table").forEach((table, tableIndex) => {
+    // Try to get headers from thead > tr > th OR first row th/td
+    let headers = [];
+    const theadRow = table.querySelector("thead tr");
+    if (theadRow) {
+      headers = Array.from(theadRow.querySelectorAll("th, td")).map(cell => cell.textContent.trim());
+    }
+
+    // Fallback: check if first row has th elements
+    if (headers.length === 0) {
+      const firstRow = table.querySelector("tr");
+      if (firstRow) {
+        const thCells = firstRow.querySelectorAll("th");
+        if (thCells.length > 0) {
+          headers = Array.from(thCells).map(th => th.textContent.trim());
+        }
+      }
+    }
+
+    // Fallback: use first row td as headers if no th found
+    if (headers.length === 0) {
+      const firstRow = table.querySelector("tr");
+      if (firstRow) {
+        const tdCells = firstRow.querySelectorAll("td");
+        headers = Array.from(tdCells).map(td => td.textContent.trim());
+      }
+    }
+
+    // Get all rows
+    const allRows = Array.from(table.querySelectorAll("tr"));
+
+    // Determine which rows contain data (skip header row)
+    const dataRows = allRows.filter(tr => {
+      const thCount = tr.querySelectorAll("th").length;
+      const tdCount = tr.querySelectorAll("td").length;
+      // Skip rows that are header rows (all th) or empty
+      return tdCount > 0;
+    });
+
+    const rows = dataRows.map(tr => {
       const cells = Array.from(tr.querySelectorAll("td"));
       const rowObj = {};
-      cells.forEach((td, idx) => { if (headers[idx]) rowObj[headers[idx]] = td.textContent.trim(); });
+      cells.forEach((td, idx) => {
+        const header = headers[idx] || `col_${idx}`;
+        rowObj[header] = td.textContent.trim();
+      });
       return rowObj;
     }).filter(r => Object.keys(r).length > 0);
 
-    tables.push({ type: classifyTable(headers), headers, rows });
+    console.log(`📊 Table ${tableIndex}: headers=${JSON.stringify(headers)}, rows=${rows.length}`);
+
+    if (headers.length > 0 && rows.length > 0) {
+      tables.push({ type: classifyTable(headers), headers, rows });
+    }
   });
+
+  console.log(`📋 Total tables extracted: ${tables.length}`);
   return tables;
 }
 
 function classifyTable(headers) {
   const text = headers.join(' ').toLowerCase();
-  if (text.includes('vehicle') || text.includes('sensor')) return 'fleet';
-  if (text.includes('component') || text.includes('failure')) return 'failures';
-  if (text.includes('engagement') || text.includes('method')) return 'engagement';
-  if (text.includes('appointment') || text.includes('service')) return 'scheduling';
-  if (text.includes('satisfaction') || text.includes('completion')) return 'quality';
+  console.log(`🔍 Classifying table with headers: ${text}`);
+
+  // More comprehensive keyword matching
+  if (text.includes('vehicle') || text.includes('sensor') || text.includes('anomal') || text.includes('health') || text.includes('maintenance priority')) return 'fleet';
+  if (text.includes('component') || text.includes('failure') || text.includes('probability') || text.includes('prediction')) return 'failures';
+  if (text.includes('engagement') || text.includes('method') || text.includes('channel') || text.includes('communication')) return 'engagement';
+  if (text.includes('appointment') || text.includes('schedule') || text.includes('service center') || text.includes('workload')) return 'scheduling';
+  if (text.includes('satisfaction') || text.includes('completion') || text.includes('quality')) return 'quality';
   if (text.includes('kpi') || text.includes('metric')) return 'kpis';
   return 'unknown';
 }
 
 function extractKPIsFromMarkdown(md) {
   const kpis = {};
+
+  // More flexible regex patterns
   const patterns = {
-    fleetHealthScore: /Fleet Health Score[\s::\-–—]+([\d.]+)%?/i,
-    engagementRate: /Overall Engagement Rate[\s::\-–—]+([\d.]+)%?/i,
-    costSavings: /Cost Savings[\s::\-–—]+\$?([\d,]+)/i
+    fleetHealthScore: /(?:Fleet\s*Health\s*Score|Health\s*Score|Overall\s*Health)[\s::\-–—]*(\d+(?:\.\d+)?)\s*%?/i,
+    engagementRate: /(?:Overall\s*)?Engagement\s*Rate[\s::\-–—]*(\d+(?:\.\d+)?)\s*%?/i,
+    costSavings: /Cost\s*Savings[\s::\-–—]*\$?\s*([\d,]+(?:\.\d+)?)/i,
+    criticalVehicles: /Critical\s*(?:Vehicles?|Count)[\s::\-–—]*(\d+)/i,
+    totalPredictions: /(?:Total\s*)?Predictions?[\s::\-–—]*(\d+)/i
   };
 
   for (const [key, regex] of Object.entries(patterns)) {
     const match = regex.exec(md);
-    if (match) kpis[key] = parseFloat(match[1].replace(/,/g, ''));
+    if (match) {
+      kpis[key] = parseFloat(match[1].replace(/,/g, ''));
+      console.log(`✓ KPI extracted: ${key} = ${kpis[key]}`);
+    }
   }
+
   return kpis;
 }
 
 function buildDataModels(tables, kpis) {
-  const data = { fleet: {}, failures: {}, engagement: {}, scheduling: {}, quality: {}, kpis: kpis };
+  const data = { fleet: { vehicles: [] }, failures: { predictions: [] }, engagement: { communication_methods: {}, engagements: [] }, scheduling: { appointments: [] }, quality: {}, kpis: kpis };
+
+  console.log(`🔧 Building data models from ${tables.length} tables`);
 
   tables.forEach(table => {
-    if (table.type === 'fleet') data.fleet = { vehicles: processFleetRows(table.rows) };
-    if (table.type === 'failures') data.failures = { predictions: processFailureRows(table.rows) };
-    if (table.type === 'engagement') data.engagement = processEngagementRows(table.rows);
-    if (table.type === 'scheduling') data.scheduling = { appointments: processSchedulingRows(table.rows) };
-    if (table.type === 'quality') data.quality = processQualityRows(table.rows);
+    console.log(`  Processing table type: ${table.type} with ${table.rows.length} rows`);
+
+    if (table.type === 'fleet') {
+      data.fleet.vehicles = processFleetRows(table.rows, table.headers);
+    } else if (table.type === 'failures') {
+      data.failures.predictions = processFailureRows(table.rows, table.headers);
+    } else if (table.type === 'engagement') {
+      const engData = processEngagementRows(table.rows, table.headers);
+      data.engagement = engData;
+    } else if (table.type === 'scheduling') {
+      data.scheduling.appointments = processSchedulingRows(table.rows, table.headers);
+    } else if (table.type === 'quality') {
+      data.quality = processQualityRows(table.rows, table.headers);
+    }
   });
 
-  if (data.fleet.vehicles) {
-    data.fleet.critical = data.fleet.vehicles.filter(v => (v.priority || '').toLowerCase().includes('critical')).length;
-    data.fleet.warning = data.fleet.vehicles.filter(v => (v.priority || '').toLowerCase().includes('warning')).length;
-    data.fleet.healthy = data.fleet.vehicles.filter(v => (v.priority || '').toLowerCase().includes('healthy') || (v.priority || '').toLowerCase().includes('low')).length;
+  // Calculate fleet counts
+  if (data.fleet.vehicles && data.fleet.vehicles.length > 0) {
+    data.fleet.critical = data.fleet.vehicles.filter(v => (v.priority || '').toLowerCase().includes('critical') || (v.priority || '').toLowerCase().includes('high')).length;
+    data.fleet.warning = data.fleet.vehicles.filter(v => (v.priority || '').toLowerCase().includes('warning') || (v.priority || '').toLowerCase().includes('medium')).length;
+    data.fleet.healthy = data.fleet.vehicles.filter(v => (v.priority || '').toLowerCase().includes('healthy') || (v.priority || '').toLowerCase().includes('low') || (v.priority || '').toLowerCase().includes('normal')).length;
+    console.log(`  Fleet counts: critical=${data.fleet.critical}, warning=${data.fleet.warning}, healthy=${data.fleet.healthy}`);
+  }
+
+  // Set prediction count
+  if (data.failures.predictions.length > 0) {
+    data.failures.total_predictions = data.failures.predictions.length;
   }
 
   return data;
 }
 
-function processFleetRows(rows) {
+function processFleetRows(rows, headers) {
+  console.log(`  Processing ${rows.length} fleet rows with headers: ${headers?.join(', ')}`);
+  return rows.map(r => {
+    const vehicle = {
+      vehicle_id: findVal(r, ['vehicle', 'id', 'veh']) || Object.values(r)[0],
+      priority: findVal(r, ['priority', 'severity', 'maintenance', 'status']) || 'Unknown',
+      segment: findVal(r, ['segment', 'type', 'category']),
+      sensor_status: findVal(r, ['sensor', 'reading', 'value']),
+      anomalies: findVal(r, ['anomal', 'issue', 'problem', 'alert'])
+    };
+    return vehicle;
+  });
+}
+
+function processFailureRows(rows, headers) {
+  console.log(`  Processing ${rows.length} failure rows with headers: ${headers?.join(', ')}`);
   return rows.map(r => ({
-    vehicle_id: findVal(r, ['vehicle', 'id']),
-    priority: findVal(r, ['priority', 'severity']),
-    segment: findVal(r, ['segment', 'type']),
-    sensor_status: findVal(r, ['sensor', 'status']),
-    anomalies: findVal(r, ['anomalies', 'issue'])
+    component: findVal(r, ['component', 'part', 'system']) || Object.values(r)[0],
+    failure_probability: parseFloat(findVal(r, ['probability', 'risk', 'failure', 'prob']) || 0),
+    confidence_level: parseFloat(findVal(r, ['confidence', 'certainty']) || 80),
+    estimated_time_to_failure: findVal(r, ['time', 'days', 'estimate', 'ttf', 'remaining']),
+    safety_impact: findVal(r, ['safety', 'impact', 'severity', 'risk'])
   }));
 }
 
-function processFailureRows(rows) {
-  return rows.map(r => ({
-    component: findVal(r, ['component', 'part']),
-    failure_probability: parseFloat(findVal(r, ['probability', 'risk']) || 0),
-    confidence_level: parseFloat(findVal(r, ['confidence']) || 0),
-    estimated_time_to_failure: findVal(r, ['time', 'days']),
-    safety_impact: findVal(r, ['safety', 'impact'])
-  }));
-}
-
-function processEngagementRows(rows) {
+function processEngagementRows(rows, headers) {
+  console.log(`  Processing ${rows.length} engagement rows with headers: ${headers?.join(', ')}`);
   const methods = {};
   const engagements = rows.map(r => {
-    const method = findVal(r, ['method', 'channel']);
+    const method = findVal(r, ['method', 'channel', 'type', 'communication']) || Object.values(r)[0];
     if (method) methods[method] = (methods[method] || 0) + 1;
     return {
       method,
-      status: findVal(r, ['status']),
-      response: findVal(r, ['response'])
+      status: findVal(r, ['status', 'result']),
+      response: findVal(r, ['response', 'outcome', 'success']),
+      rate: findVal(r, ['rate', 'percentage', '%'])
     };
   });
   return { communication_methods: methods, engagements };
 }
 
-function processSchedulingRows(rows) {
+function processSchedulingRows(rows, headers) {
+  console.log(`  Processing ${rows.length} scheduling rows with headers: ${headers?.join(', ')}`);
   return rows.map(r => ({
-    vehicle_id: findVal(r, ['vehicle']),
-    scheduled_date: findVal(r, ['date']),
-    service_center: findVal(r, ['center']),
-    workload: parseInt(findVal(r, ['workload']) || 0)
+    vehicle_id: findVal(r, ['vehicle', 'id']) || Object.values(r)[0],
+    scheduled_date: findVal(r, ['date', 'schedule', 'appointment', 'time']),
+    service_center: findVal(r, ['center', 'location', 'facility', 'service']),
+    workload: parseInt(findVal(r, ['workload', 'capacity', 'utilization']) || 75)
   }));
 }
 
-function processQualityRows(rows) {
+function processQualityRows(rows, headers) {
+  console.log(`  Processing ${rows.length} quality rows with headers: ${headers?.join(', ')}`);
+  if (rows.length === 0) {
+    return { completion_rate: 95, customer_satisfaction_score: 8.7 };
+  }
   return {
-    completion_rate: parseFloat(findVal(rows[0] || {}, ['completion']) || 95),
-    customer_satisfaction_score: parseFloat(findVal(rows[0] || {}, ['satisfaction']) || 8.7)
+    completion_rate: parseFloat(findVal(rows[0], ['completion', 'complete', 'rate']) || 95),
+    customer_satisfaction_score: parseFloat(findVal(rows[0], ['satisfaction', 'score', 'rating']) || 8.7)
   };
 }
 
 function findVal(obj, keys) {
+  // First try exact key matches
+  for (const key of keys) {
+    if (obj[key] !== undefined) return obj[key];
+  }
+
+  // Then try partial/case-insensitive matches
   for (const k of Object.keys(obj)) {
-    if (keys.some(key => k.toLowerCase().includes(key))) return obj[k];
+    const lowerK = k.toLowerCase();
+    if (keys.some(key => lowerK.includes(key.toLowerCase()))) {
+      return obj[k];
+    }
   }
   return null;
 }

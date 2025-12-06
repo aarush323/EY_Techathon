@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CareCrew - Automotive Predictive Maintenance Platform</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <title>CareCrew — Predictive Maintenance Platform</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <!-- Markdown parsing and HTML manipulation libraries -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -13,6 +13,31 @@
   <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0"></script>
+  <script>
+    // IMMEDIATE THEME APPLICATION - Prevents flash
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', initialTheme);
+    console.log('Theme initialized:', initialTheme);
+
+    // Attach toggle after DOM loads
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('theme-toggle');
+      if (btn) {
+        btn.addEventListener('click', () => {
+          const current = document.documentElement.getAttribute('data-theme');
+          const newTheme = current === 'light' ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', newTheme);
+          localStorage.setItem('theme', newTheme);
+          console.log('Theme toggled to:', newTheme);
+        });
+        console.log('Theme toggle attached');
+      } else {
+        console.error('Theme toggle button not found!');
+      }
+    });
+  </script>
 </head>
 
 <body>
@@ -20,19 +45,49 @@
     <!-- Header -->
     <header class="top-bar">
       <div class="logo-section">
-        <div class="logo-icon"></div>
-        <h1>CareCrew <span class="subtitle">Automotive Predictive Maintenance Platform</span></h1>
+        <div class="brand">
+          <div class="brand-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+              <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+              <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+            </svg>
+          </div>
+          <span class="brand-name">CareCrew</span>
+        </div>
       </div>
       <div class="header-controls">
-        <div class="date-range">
-          <span>Data Last Updated: <span id="last-updated-date">--/--/----</span></span>
+        <div class="status-container">
+          <div class="status-dot"></div>
+          <span class="status-text">Live</span>
         </div>
+        <div class="date-container">
+          <span class="date-label">Updated</span>
+          <span id="last-updated-date" class="date-value">--/--/----</span>
+        </div>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+          <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <circle cx="12" cy="12" r="5" />
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </svg>
+          <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+        </button>
       </div>
     </header>
 
-    <!-- KPI Cards Row -->
+    <!-- KPI Cards -->
     <section class="kpi-grid" id="kpi-container">
-      <!-- KPIs will be injected here by JS -->
       <div class="kpi-card skeleton"></div>
       <div class="kpi-card skeleton"></div>
       <div class="kpi-card skeleton"></div>
@@ -40,9 +95,15 @@
       <div class="kpi-card skeleton"></div>
     </section>
 
+    <!-- Quick Navigation -->
+    <nav class="quick-nav">
+      <a href="#visualizations" class="nav-btn">📊 Visualizations</a>
+      <a href="#tables" class="nav-btn">📋 Data Tables</a>
+      <a href="#insights" class="nav-btn">💡 Insights & Recommendations</a>
+    </nav>
+
     <!-- Charts Grid -->
-    <section class="charts-grid">
-      <!-- Row 1 -->
+    <section class="charts-grid" id="visualizations">
       <div class="chart-card wide">
         <div class="card-header">
           <h3>Fleet Health Score Trend</h3>
@@ -54,17 +115,16 @@
       </div>
       <div class="chart-card">
         <div class="card-header">
-          <h3>Vehicle Maintenance Priority Distribution</h3>
+          <h3>Priority Distribution</h3>
         </div>
         <div class="chart-container donut-container">
           <canvas id="priorityDistChart"></canvas>
         </div>
       </div>
 
-      <!-- Row 2 -->
       <div class="chart-card">
         <div class="card-header">
-          <h3>Component Failure Probabilities</h3>
+          <h3>Component Failures</h3>
         </div>
         <div class="chart-container">
           <canvas id="failureProbChart"></canvas>
@@ -72,7 +132,7 @@
       </div>
       <div class="chart-card">
         <div class="card-header">
-          <h3>Service Center Workload</h3>
+          <h3>Service Workload</h3>
         </div>
         <div class="chart-container">
           <canvas id="serviceWorkloadChart"></canvas>
@@ -80,7 +140,7 @@
       </div>
       <div class="chart-card">
         <div class="card-header">
-          <h3>Customer Engagement by Channel</h3>
+          <h3>Engagement Channels</h3>
         </div>
         <div class="chart-container">
           <canvas id="engagementChannelChart"></canvas>
@@ -88,35 +148,131 @@
       </div>
     </section>
 
-    <!-- Data Table Section -->
-    <section class="table-section">
-      <div class="section-header">
-        <h3>Fleet Maintenance Schedule and Predictive Alerts</h3>
+    <!-- Manufacturing Quality Insights Section - PREMIUM 3-CARD LAYOUT -->
+    <section class="insights-section" id="insights">
+      <div class="insights-header">
+        <div class="header-content">
+          <div class="header-icon">💡</div>
+          <div class="header-text">
+            <h2>Manufacturing Quality Insights & Recommendations</h2>
+            <p class="section-subtitle">Root Cause Analysis and Strategic Action Plan</p>
+          </div>
+        </div>
       </div>
-      <div class="table-container">
-        <table id="maintenance-table">
-          <thead>
-            <tr>
-              <th>Vehicle ID</th>
-              <th>Segment</th>
-              <th>Priority</th>
-              <th>Failure Risk (%)</th>
-              <th>Scheduled Service</th>
-              <th>Service Center</th>
-              <th>Est. Hours</th>
-              <th>Cost Est. ($)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Rows injected by JS -->
-          </tbody>
-        </table>
+
+      <div class="insights-grid-premium">
+        <!-- Card 1: Critical Findings (RCA) -->
+        <div class="insight-card-premium critical-card">
+          <div class="card-header-premium" onclick="toggleCard('critical')">
+            <div class="card-title-group">
+              <div class="card-icon critical">⚠️</div>
+              <div>
+                <h3>Top Critical Findings</h3>
+                <span class="card-subtitle">Root Cause Analysis (RCA)</span>
+              </div>
+            </div>
+            <div class="expand-icon" id="critical-icon">▼</div>
+          </div>
+          <div class="card-body-premium" id="critical-body">
+            <div id="rca-content" class="insight-content">
+              <p class="loading-text">Loading critical findings...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: High-Impact Recommendations (CAPA) -->
+        <div class="insight-card-premium recommendations-card">
+          <div class="card-header-premium" onclick="toggleCard('recommendations')">
+            <div class="card-title-group">
+              <div class="card-icon recommendations">🔧</div>
+              <div>
+                <h3>High-Impact Recommendations</h3>
+                <span class="card-subtitle">Corrective & Preventive Actions (CAPA)</span>
+              </div>
+            </div>
+            <div class="expand-icon" id="recommendations-icon">▼</div>
+          </div>
+          <div class="card-body-premium" id="recommendations-body">
+            <div id="design-content" class="insight-content">
+              <p class="loading-text">Loading recommendations...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Executive Summary & ROI -->
+        <div class="insight-card-premium summary-card">
+          <div class="card-header-premium" onclick="toggleCard('summary')">
+            <div class="card-title-group">
+              <div class="card-icon summary">📈</div>
+              <div>
+                <h3>Executive Summary & ROI</h3>
+                <span class="card-subtitle">Strategic Actions & Financial Impact</span>
+              </div>
+            </div>
+            <div class="expand-icon" id="summary-icon">▼</div>
+          </div>
+          <div class="card-body-premium" id="summary-body">
+            <div id="executive-content" class="insight-content">
+              <p class="loading-text">Loading executive summary...</p>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="table-total" id="total-immediate-cost">
-        TOTAL IMMEDIATE COSTS: --
+    </section>
+
+    <!-- All Tables Section -->
+    <section class="tables-section" id="tables">
+      <div class="section-title">
+        <h2>Data Analysis</h2>
+        <p class="section-subtitle">Complete report from markdown parsing</p>
+      </div>
+
+      <div id="all-tables-container"></div>
+
+      <!-- Main Maintenance Table -->
+      <div class="table-section">
+        <div class="section-header">
+          <h3>Fleet Maintenance & Alerts</h3>
+        </div>
+        <div class="table-container">
+          <table id="maintenance-table">
+            <thead>
+              <tr>
+                <th>Vehicle ID</th>
+                <th>Segment</th>
+                <th>Priority</th>
+                <th>Failure Risk (%)</th>
+                <th>Scheduled Service</th>
+                <th>Service Center</th>
+                <th>Est. Hours</th>
+                <th>Cost Est. ($)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <div class="table-total" id="total-immediate-cost">TOTAL IMMEDIATE COSTS: --</div>
+        </div>
       </div>
     </section>
   </div>
+
+  <script>
+    // Expand/Collapse functionality for insights cards
+    function toggleCard(cardId) {
+      const body = document.getElementById(`${cardId}-body`);
+      const icon = document.getElementById(`${cardId}-icon`);
+
+      if (body.classList.contains('collapsed')) {
+        body.classList.remove('collapsed');
+        icon.textContent = '▼';
+      } else {
+        body.classList.add('collapsed');
+        icon.textContent = '▶';
+      }
+    }
+  </script>
 
   <script src="script.js"></script>
 </body>

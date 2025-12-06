@@ -29,9 +29,17 @@ A modern, responsive web dashboard for visualizing automotive predictive mainten
 ## Quick Start
 
 ### 1. Install Dependencies
+
+**Backend (from `dashboard/` folder):**
 ```bash
 cd dashboard
 pip install -r requirements.txt
+```
+
+**Frontend (from `dashboard/frontend/` folder):**
+```bash
+cd dashboard/frontend
+npm install
 ```
 
 ### 2. Set Environment Variables (Optional)
@@ -41,12 +49,26 @@ export OPENROUTER_API_KEY=your_openrouter_api_key_here
 ```
 
 ### 3. Run the Dashboard
+
+> **Important:** Start the backend FIRST, then the frontend. Both must be running for the dashboard to load data.
+
+**Step 1 - Start the Backend (Terminal 1):**
 ```bash
+cd dashboard
 python app.py
+# Backend API running at: http://localhost:5000
+```
+
+**Step 2 - Start the Frontend (Terminal 2):**
+```bash
+cd dashboard/frontend
+npm run dev
+# Frontend running at: http://localhost:5173
 ```
 
 ### 4. Access the Dashboard
-Open your browser and navigate to: **http://localhost:5000**
+- **Frontend UI**: Open your browser to **http://localhost:5173**
+- **Backend API**: Available at **http://localhost:5000/api/dashboard**
 
 ## API Endpoints
 

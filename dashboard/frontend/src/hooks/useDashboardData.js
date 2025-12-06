@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { processMarkdownPipeline } from '../utils/dashboardLogic';
 
+// Configurable API base URL - empty in dev (Vite proxy handles /api), set in prod
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 export default function useDashboardData() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -8,11 +11,14 @@ export default function useDashboardData() {
 
     useEffect(() => {
         async function fetchData() {
+            const url = `${API_BASE_URL}/api/dashboard`;
             try {
-                console.log('Fetching dashboard data...');
-                // Use relative path to leverage Vite proxy in dev, and relative in prod
-                const response = await fetch('/api/dashboard');
-                if (!response.ok) throw new Error('Network response was not ok');
+                console.log('Fetching dashboard data from:', url);
+                const response = await fetch(url);
+                if (!response.ok) {
+                    console.error('Dashboard fetch failed:', response.status, response.statusText, response.url);
+                    throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+                }
 
                 const jsonData = await response.json();
 

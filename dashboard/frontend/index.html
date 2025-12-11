@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 
 <head>
   <meta charset="UTF-8" />
@@ -9,9 +9,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script>
     // IMMEDIATE THEME APPLICATION
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
+    //const savedTheme = localStorage.getItem('theme');
+    //const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    //const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
+
+    const initialTheme = savedTheme || 'dark';
     document.documentElement.setAttribute('data-theme', initialTheme);
   </script>
 </head>

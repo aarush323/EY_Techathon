@@ -16,25 +16,25 @@ export default function Header() {
     const currentDate = new Date().toLocaleDateString('en-US');
 
     return (
-        <header class="top-bar">
-            <div class="logo-section">
-                <div class="brand">
-                    <div class="brand-icon">
+        <header className="top-bar">
+            <div className="logo-section">
+                <div className="brand">
+                    <div className="brand-icon">
                         <Activity size={24} color="currentColor" />
                     </div>
-                    <span class="brand-name">CareCrew</span>
+                    <span className="brand-name">CareCrew</span>
                 </div>
             </div>
-            <div class="header-controls">
-                <div class="status-container">
-                    <div class="status-dot"></div>
-                    <span class="status-text">Live</span>
+            <div className="header-controls">
+                <div className="status-container">
+                    <div className="status-dot"></div>
+                    <span className="status-text">Live</span>
                 </div>
-                <div class="date-container">
-                    <span class="date-label">Updated</span>
-                    <span class="date-value">{currentDate}</span>
+                <div className="date-container">
+                    <span className="date-label">Updated</span>
+                    <span className="date-value">{currentDate}</span>
                 </div>
-                <button class="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
+                <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
                     {theme === 'light' ? <Sun size={18} /> : <Moon size={18} />}
                 </button>
             </div>

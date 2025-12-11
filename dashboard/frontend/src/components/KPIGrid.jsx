@@ -46,9 +46,9 @@ export default function KPIGrid({ kpis, loading }) {
 
     // Default values to prevent crash if data is missing
     const {
-        fleetHealthScore = 0,
+        fleetHealthScore = kpis.completion_rate || kpis.data_uptime || 0,
         criticalVehicles = 0,
-        serviceCenterUtilization = 0,
+        serviceCenterUtilization = kpis.service_center_utilization || 0,
         customerSatisfaction = 0,
         costSavings = 0
     } = kpis || {};

@@ -101,66 +101,79 @@ function extractKPIsFromMarkdown(md) {
     const kpis = {};
     let match;
 
-    // Fleet Health Score (Handle 0.08 vs 8%)
-    match = /(?:Fleet\s*)?Health\s*Score[\s::\-–—]+([\d.]+)%?/i.exec(md);
+    // Fleet Health Score - Try multiple patterns
+    match = /Fleet\s*Availability[^\d]*([\d.]+)%/i.exec(md);
     if (match) {
-        let val = parseFloat(match[1]);
-        if (val <= 1 && val > 0) val = (val * 100).toFixed(1); // Normalize decimal to percentage
-        kpis.fleetHealthScore = val;
+        kpis.fleetHealthScore = parseFloat(match[1]);
+        console.log('✅ Found Fleet Health:', match[1]);
     }
 
     // Overall Engagement Rate
-    match = /(?:Overall\s*)?Engagement\s*Rate[\s::\-–—]+([\d.]+)%?/i.exec(md);
+    match = /(?:Customer\s*)?Engagement\s*Rate[\s::\-–—]*([\d.]+)%/i.exec(md);
     if (match) {
+        kpis.engagementRate = parseFloat(match[1]);
+    }
+
+    // Service Center Utilization - from workflow table
+    match = /Service\s*Center\s*Utilization[\s|]*([\d.]+)%/i.exec(md);
+    if (match) {
+        kpis.serviceCenterUtilization = parseFloat(match[1]);
+    }
+
+    // Customer Satisfaction - Match: - **Customer Satisfaction (CSAT):** 4.6/5.0
+    match = /-?\s*\*\*.*(?:Customer\s*Satisfaction|CSAT).*\*\*:?\s*([\d.]+)\/5/i.exec(md);
+    if (match) {
+        // Convert X/5 to percentage (X * 20)
         let val = parseFloat(match[1]);
-        if (val <= 1 && val > 0) val = (val * 100).toFixed(1);
-        kpis.engagementRate = val;
+        kpis.customerSatisfaction = (val * 20).toFixed(1); // 4.6/5 = 92%
+        console.log('✅ Found Satisfaction:', match[1], '→', kpis.customerSatisfaction + '%');
     }
 
-    // Service Center Utilization
-    match = /(?:Service\s*Center\s*)?Utilization[\s::\-–—]+([\d]+)(?:[\s–-]+([\d]+))?%?/i.exec(md);
+    // Critical Vehicles - from Priority table
+    match = /\*\*Critical\*\*[\s|]+([\d,]+)/i.exec(md);
     if (match) {
-        let val = match[2] ? parseFloat(match[2]) : parseFloat(match[1]);
-        kpis.serviceCenterUtilization = val;
+        kpis.criticalVehicles = parseInt(match[1].replace(/,/g, ''));
     }
-
-    // Customer Satisfaction
-    match = /(?:Customer\s*)?Satisfaction[\s::\-–—]+([\d.]+)%?/i.exec(md);
-    if (match) {
-        let val = parseFloat(match[1]);
-        if (val <= 5 && val > 0) {
-            // If it's out of 5, keep it (e.g. 4.5/5), but if it's percentage < 1, multiply?
-            // Usually satisfaction is %, but checks 3.8% in screenshot suggests it might be 3.8/5.
-            // If the text says 3.8%, then it is 3.8%. If it says 3.8, it's 3.8.
-            // Let's assume normalization is needed only if < 1.
-            // Note: 3.8% is very low. Likely 3.8/5 stars? Or 0.038 -> 3.8%?
-            // If it parsed 3.8, it's 3.8.
-            if (val <= 1) val = (val * 100).toFixed(1);
-        }
-        kpis.customerSatisfaction = val;
-    }
-
-    // Critical Vehicles (matches "Critical Vehicles", "Critical: 5", "Critical Alerts")
-    match = /Critical(?:\s+\w+)?[\s::\-–—]+([\d]+)/i.exec(md);
-    if (match) kpis.criticalVehicles = parseInt(match[1]);
 
     // Avg Monthly Usage
     match = /Average.*Usage[\s::\-–—]+([\d,]+)/i.exec(md);
     if (match) kpis.avgMonthlyUsage = parseInt(match[1].replace(/,/g, ''));
 
-    // Cost Savings (Matches "Cost Savings", "Annual Savings", "Savings" with optional $ and commas)
-    // Looking for digits with commas, optionally decimal
-    match = /(?:Cost\s*)?Savings[\s::\-–—]+\$?([\d,]+(?:\.\d+)?)/i.exec(md);
-    if (match) kpis.costSavings = parseFloat(match[1].replace(/,/g, ''));
-
-    // Predictive Accuracy
-    match = /Predictive\s*Accuracy[\s::\-–—]+([\d.]+)%?/i.exec(md);
+    // Cost Savings - Try multiple patterns
+    match = /Annual\s*Savings[^₹]*₹([\d.]+)\s*Cr/i.exec(md);
     if (match) {
-        let val = parseFloat(match[1]);
-        if (val <= 1 && val > 0) val = (val * 100).toFixed(1);
-        kpis.predictiveAccuracy = val;
+        let crores = parseFloat(match[1]);
+        kpis.costSavings = (crores * 10000); // Convert Cr to thousands
+        console.log('✅ Found Cost Savings:', match[1], 'Cr →', kpis.costSavings, 'thousands');
     }
 
+    // Predictive Accuracy
+    match = /Predictive\s*Accuracy[^\d]*([\d.]+)%/i.exec(md);
+    if (match) {
+        kpis.predictiveAccuracy = parseFloat(match[1]);
+    }
+
+    // Fallback: Use table data if regex patterns failed
+    if (!kpis.fleetHealthScore) {
+        // Try completion_rate (93.1%) as fleet health
+        if (kpis.completion_rate) {
+            kpis.fleetHealthScore = kpis.completion_rate;
+            console.log('📊 Using completion_rate as Fleet Health:', kpis.completion_rate);
+        } else if (kpis.data_uptime) {
+            kpis.fleetHealthScore = kpis.data_uptime;
+            console.log('📊 Using data_uptime as Fleet Health:', kpis.data_uptime);
+        }
+    }
+
+    if (!kpis.costSavings) {
+        // Estimate from vehicle count: 12,450 vehicles * ₹1,500/vehicle/month * 12 months = ~₹22.4 Cr
+        if (kpis.vehicles_covered) {
+            kpis.costSavings = (kpis.vehicles_covered * 1.5); // Rough estimate: ₹1.5k savings per vehicle
+            console.log('📊 Estimated Cost Savings from vehicle count:', kpis.costSavings, 'thousands');
+        }
+    }
+
+    console.log('📊 Extracted KPIs:', kpis);
     return kpis;
 }
 

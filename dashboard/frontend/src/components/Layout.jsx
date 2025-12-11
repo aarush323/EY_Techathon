@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
+import Header from './Header';
 import { useDashboard } from '../context/DashboardContext';
 
 export default function Layout() {
@@ -7,6 +8,7 @@ export default function Layout() {
 
     return (
         <div className="app-layout">
+            <Header />
             <Navbar />
             <main className="main-content">
                 {error ? (

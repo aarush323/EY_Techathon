@@ -1,54 +1,96 @@
-# AutomotivePredictiveMaintenanceAiSystem Crew
+# Automotive Predictive Maintenance AI System
 
-Welcome to the AutomotivePredictiveMaintenanceAiSystem Crew project, powered by [crewAI](https://crewai.com). This template is designed to help you set up a multi-agent AI system with ease, leveraging the powerful and flexible framework provided by crewAI. Our goal is to enable your agents to collaborate effectively on complex tasks, maximizing their collective intelligence and capabilities.
+AI-powered predictive maintenance for automotive fleets using multi-agent orchestration. Built for EY Techathon 2025.
 
-## Installation
+## What It Does
 
-Ensure you have Python >=3.10 <3.14 installed on your system. This project uses [UV](https://docs.astral.sh/uv/) for dependency management and package handling, offering a seamless setup and execution experience.
+Analyzes vehicle telemetry data to predict component failures before they happen, automatically notifies customers, schedules maintenance appointments, and generates business intelligence insights.
 
-First, if you haven't already, install uv:
+**7 AI Agents Working Together:**
+- Fleet data monitoring & analysis
+- Component failure prediction
+- Customer engagement & notifications
+- Service appointment scheduling
+- Feedback collection & quality tracking
+- Manufacturing defect pattern detection
+- Business intelligence dashboard generation
 
-```bash
-pip install uv
+## Tech Stack
+
+- **Framework:** CrewAI (multi-agent orchestration)
+- **LLM:** Cerebras API (llama3.1-8b) or local Ollama (mistral)
+- **Dashboard:** Flask + vanilla HTML/CSS/JS
+- **Tools:** Custom APIs for vehicle telematics, maintenance history, service centers, route optimization
+
+## Quick Start
+
+**1. Install Dependencies**
+```powershell
+pip install -r requirements.txt
 ```
 
-Next, navigate to your project directory and install the dependencies:
+**2. Configure LLM Provider**
 
-(Optional) Lock the dependencies and install them by using the CLI command:
-```bash
-crewai install
-```
-### Customizing
+Copy `.env.example` to `.env` and choose your provider:
 
-**Add your `OPENAI_API_KEY` into the `.env` file**
+```env
+# Option A: Cerebras (fast, cloud-based, free tier)
+LLM_PROVIDER=cerebras
+CEREBRAS_API_KEY=your_key_from_cloud.cerebras.ai
 
-- Modify `src/automotive_predictive_maintenance_ai_system/config/agents.yaml` to define your agents
-- Modify `src/automotive_predictive_maintenance_ai_system/config/tasks.yaml` to define your tasks
-- Modify `src/automotive_predictive_maintenance_ai_system/crew.py` to add your own logic, tools and specific args
-- Modify `src/automotive_predictive_maintenance_ai_system/main.py` to add custom inputs for your agents and tasks
-
-## Running the Project
-
-To kickstart your crew of AI agents and begin task execution, run this from the root folder of your project:
-
-```bash
-$ crewai run
+# Option B: Ollama (local, private, no API key)
+LLM_PROVIDER=ollama
+# Run: ollama pull mistral:latest
 ```
 
-This command initializes the automotive_predictive_maintenance_ai_system Crew, assembling the agents and assigning them tasks as defined in your configuration.
+**3. Run the AI Workflow**
+```powershell
+python src\systemm\main.py run
+```
 
-This example, unmodified, will run the create a `report.md` file with the output of a research on LLMs in the root folder.
+This generates `src\systemm\crew_report.json` with analysis results (takes 2-5 min with Cerebras, 10-20 min with Ollama).
 
-## Understanding Your Crew
+**4. Launch Dashboard**
+```powershell
+python dashboard\app.py
+```
 
-The automotive_predictive_maintenance_ai_system Crew is composed of multiple AI agents, each with unique roles, goals, and tools. These agents collaborate on a series of tasks, defined in `config/tasks.yaml`, leveraging their collective skills to achieve complex objectives. The `config/agents.yaml` file outlines the capabilities and configurations of each agent in your crew.
+Open http://localhost:5000 to view the analysis dashboard.
 
-## Support
+## Project Structure
 
-For support, questions, or feedback regarding the AutomotivePredictiveMaintenanceAiSystem Crew or crewAI.
-- Visit our [documentation](https://docs.crewai.com)
-- Reach out to us through our [GitHub repository](https://github.com/joaomdmoura/crewai)
-- [Join our Discord](https://discord.com/invite/X4JWnZnxPb)
-- [Chat with our docs](https://chatg.pt/DWjSBZn)
+```
+├── src/systemm/           # AI agent system
+│   ├── crew.py           # Agent orchestration
+│   ├── main.py           # Entry point
+│   ├── config/           # Agent & task definitions
+│   └── tools/            # Custom API tools
+├── dashboard/            # Web dashboard
+│   ├── app.py           # Flask server
+│   └── frontend/        # React UI
+├── .env.example         # Config template
+└── requirements.txt     # Python dependencies
+```
 
-Let's create wonders together with the power and simplicity of crewAI.
+## How It Works
+
+1. **Data Analysis Agent** fetches vehicle telemetry (battery health, motor status, brake wear)
+2. **Diagnosis Agent** predicts failures using historical patterns and ML
+3. **Customer Engagement Agent** generates personalized maintenance alerts
+4. **Scheduling Agent** finds nearby service centers and optimizes routes
+5. **Feedback Agent** tracks service completion and updates records
+6. **Manufacturing Insights Agent** identifies recurring defects across fleet
+7. **Master Orchestrator** compiles everything into a BI dashboard report
+
+All agents run sequentially, passing context to the next. Final output is a JSON report displayed on the web dashboard.
+
+## Requirements
+
+- Python 3.10-3.13
+- 8GB RAM (16GB recommended for local Ollama)
+- Internet connection (for Cerebras) or Ollama installed locally
+- No GPU required
+
+---
+
+**Built with CrewAI** | Optimized for laptops without dedicated GPUs

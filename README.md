@@ -17,10 +17,10 @@ Analyzes vehicle telemetry data to predict component failures before they happen
 
 ## Tech Stack
 
-- **Framework:** CrewAI (multi-agent orchestration)
-- **LLM:** Cerebras API (llama3.1-8b) or local Ollama (mistral)
-- **Dashboard:** Flask + vanilla HTML/CSS/JS
-- **Tools:** Custom APIs for vehicle telematics, maintenance history, service centers, route optimization
+**Framework**: CrewAI (multi-agent orchestration)
+**LLM**: Cerebras API (llama3.1-8b) + Perplexity API, or local Ollama (mistral)
+**Dashboard / Frontend**: Flask + React/Vue with JavaScript
+**Tools**: Custom APIs for vehicle telematics, maintenance history, service centers, route optimization
 
 ## Quick Start
 

@@ -21,7 +21,7 @@ def run():
     """
     inputs = {
         'oem_name': 'Sample OEM',
-        'customer_name': 'John Doe',
+        'customer_name': 'Jon Snow',
         'vehicle_id': 'VH12345'
     }
 

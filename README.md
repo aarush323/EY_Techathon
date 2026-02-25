@@ -27,7 +27,7 @@ Analyzes vehicle telemetry data to predict component failures before they happen
 <img width="1128" height="878" alt="image" src="https://github.com/user-attachments/assets/dca898cc-4275-49c4-8002-7d033cf670f4" />
 <img width="1280" height="576" alt="image" src="https://github.com/user-attachments/assets/25b48832-96be-488e-9f71-e3bf1392f045" />
 
-##System Architecture
+## System Architecture
 <img width="603" height="574" alt="arch" src="https://github.com/user-attachments/assets/c8f7ab70-85bb-4f28-816a-5dfa76777cf7" />
 
 

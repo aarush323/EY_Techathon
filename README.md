@@ -22,6 +22,15 @@ Analyzes vehicle telemetry data to predict component failures before they happen
 3. **Dashboard / Frontend**: Flask + React/Vue with JavaScript
 4. **Tools**: Custom APIs for vehicle telematics, maintenance history, service centers, route optimization
 
+
+## Prototype Visuals
+<img width="1128" height="878" alt="image" src="https://github.com/user-attachments/assets/dca898cc-4275-49c4-8002-7d033cf670f4" />
+<img width="1280" height="576" alt="image" src="https://github.com/user-attachments/assets/25b48832-96be-488e-9f71-e3bf1392f045" />
+
+##System Architecture
+<img width="603" height="574" alt="arch" src="https://github.com/user-attachments/assets/c8f7ab70-85bb-4f28-816a-5dfa76777cf7" />
+
+
 ## Quick Start
 
 **1. Install Dependencies**

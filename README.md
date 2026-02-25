@@ -1,6 +1,6 @@
 # Automotive Predictive Maintenance AI System
 
-AI-powered predictive maintenance for automotive fleets using multi-agent orchestration. Built for EY Techathon 2025.
+AI-powered predictive maintenance for automotive fleets using multi-agent orchestration. 
 
 ## What It Does
 
@@ -17,7 +17,7 @@ Analyzes vehicle telemetry data to predict component failures before they happen
 
 ## Tech Stack
 
-1. **Framework**: CrewAI (multi-agent orchestration)
+1. **Agentic Framework**: CrewAI (multi-agent orchestration)
 2. **LLM**: Cerebras API (llama3.1-8b) + Perplexity API, or local Ollama (mistral)
 3. **Dashboard / Frontend**: Flask + React/Vue with JavaScript
 4. **Tools**: Custom APIs for vehicle telematics, maintenance history, service centers, route optimization
